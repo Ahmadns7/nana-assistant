@@ -1,0 +1,53 @@
+# Gradle
+.gradle/
+build/
+*/build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Local config
+local.properties
+*.keystore
+*.jks
+keystore.jks
+
+# IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Model files (large, not committed)
+app/src/main/assets/models/
+**/models/*.gguf
+**/models/*.onnx
+**/models/*.ppn
+**/models/*.bin
+
+# Debug APKs
+app/build/outputs/apk/debug/
+app/build/outputs/apk/profile/
+app/build/outputs/apk/release/
+
+# Release artifacts
+app/build/outputs/bundle/
+app/build/outputs/apk/release/
+
+# Kotlin
+*.kt.bin
+
+# Coverage
+*.ec
+coverage/
+
+# Fabric
+.fabric/

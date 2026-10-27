@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NaNa Assistant</string>
+    <string name="accessibility_service_name">NaNa Assistant</string>
+    <string name="accessibility_service_desc">Controls your phone by voice using screen reading and actions.</string>
+    <string name="notification_listener_name">NaNa Notifications</string>
+    <string name="notification_listener_desc">Reads and manages notifications for voice triage.</string>
+</resources>

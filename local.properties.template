@@ -1,0 +1,17 @@
+// NaNa local.properties template
+# Copy to local.properties and fill in values
+
+# SDK location (auto-detected if not set)
+# sdk.dir=/home/ubuntu/Android/Sdk
+
+# Signing config for release builds
+# KEYSTORE_PATH=/path/to/keystore.jks
+# KEYSTORE_PASSWORD=your_keystore_password
+# KEY_ALIAS=your_key_alias
+# KEY_PASSWORD=your_key_password
+
+# Porcupine Access Key (get from https://console.picovoice.ai/)
+# PORCUPINE_ACCESS_KEY=your_access_key_here
+
+# Optional: Custom model paths
+# MODELS_DIR=/path/to/models
