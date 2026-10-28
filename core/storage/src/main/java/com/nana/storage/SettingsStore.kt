@@ -73,6 +73,17 @@ class SettingsStore(private val context: Context) {
         Result.Failure(Result.Error("STORE_FAILED", "Failed to save setting", e))
     }
 
+    suspend fun getTTSPitch(): Float = dataStore.data
+        .map { it[TTS_PITCH] ?: 1.0f }
+        .first()
+
+    suspend fun setTTSPitch(pitch: Float): Result<Unit> = try {
+        dataStore.edit { it[TTS_PITCH] = pitch.coerceIn(0.5f, 2.0f) }
+        Result.Success(Unit)
+    } catch (e: Exception) {
+        Result.Failure(Result.Error("STORE_FAILED", "Failed to save setting", e))
+    }
+
     suspend fun getLLMModel(): String = dataStore.data
         .map { it[LLM_MODEL] ?: "gemma_3_1b_q4" }
         .first()

@@ -18,6 +18,7 @@ import kotlinx.coroutines.withContext
  * Phone basics: calls, SMS, alarms, timers, toggles, system info.
  */
 class PhoneController(private val context: Context) {
+    @Volatile private var flashlightEnabled = false
 
     // Calls
     suspend fun call(number: String): Result<Unit> = withContext(Dispatchers.IO) {
@@ -91,9 +92,10 @@ class PhoneController(private val context: Context) {
                 characteristics.get(android.hardware.camera2.CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
             } ?: return ActionResult(false, "No flashlight available")
 
-            val isOn = isFlashlightOn(cameraManager, cameraId)
-            cameraManager.setTorchMode(cameraId, !isOn)
-            ActionResult(true, if (isOn) "Flashlight off" else "Flashlight on")
+            val nextState = !isFlashlightOn(cameraManager, cameraId)
+            cameraManager.setTorchMode(cameraId, nextState)
+            flashlightEnabled = nextState
+            ActionResult(true, if (nextState) "Flashlight on" else "Flashlight off")
         } catch (e: Exception) {
             NanaLogger.e("PhoneController", "Flashlight toggle failed", e)
             ActionResult(false, "Flashlight toggle failed: ${e.message}")
@@ -101,11 +103,9 @@ class PhoneController(private val context: Context) {
     }
 
     private fun isFlashlightOn(cameraManager: android.hardware.camera2.CameraManager, cameraId: String): Boolean {
-        try {
-            return cameraManager.getCameraCharacteristics(cameraId)
-                .get(android.hardware.camera2.CameraCharacteristics.FLASH_INFO_AVAILABLE) == true &&
-                // Note: No direct API to query torch state, track internally or use camera
-                false // Default to off
+        return try {
+            cameraManager.getCameraCharacteristics(cameraId)
+                .get(android.hardware.camera2.CameraCharacteristics.FLASH_INFO_AVAILABLE) == true && flashlightEnabled
         } catch (e: Exception) {
             return false
         }

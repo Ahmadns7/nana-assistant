@@ -12,8 +12,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.nana.media.MediaController
 import com.nana.phone.PhoneController
+import com.nana.settings.SettingsRepository
+import com.nana.storage.SettingsStore
 import com.nana.ui.main.theme.NaNaTheme
 import com.nana.ui.main.viewmodel.MainViewModel
+import com.nana.ui.settings.SettingsActivity
 import com.nana.wakeword.WakeWordManager
 
 class MainActivity : ComponentActivity() {
@@ -31,7 +34,8 @@ class MainActivity : ComponentActivity() {
                     application,
                     WakeWordManager(applicationContext),
                     MediaController(applicationContext),
-                    PhoneController(applicationContext)
+                    PhoneController(applicationContext),
+                    SettingsRepository(SettingsStore(applicationContext))
                 ) as T
             }
         }
@@ -41,9 +45,14 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             NaNaTheme {
-                MainScreen(viewModel = viewModel, onRequestPermissions = ::requestAppPermissions)
+                MainScreen(viewModel = viewModel, onRequestPermissions = ::requestAppPermissions, onOpenSettings = ::openSettings)
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        viewModel.onResume()
     }
 
     private fun requestAppPermissions() {
@@ -58,6 +67,10 @@ class MainActivity : ComponentActivity() {
         } else {
             permissionLauncher.launch(permissions.toTypedArray())
         }
+    }
+
+    private fun openSettings() {
+        startActivity(Intent(this, SettingsActivity::class.java))
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {

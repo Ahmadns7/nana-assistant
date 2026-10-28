@@ -10,13 +10,17 @@ import com.nana.settings.SettingsRepository
 import com.nana.storage.SettingsStore
 import com.nana.ui.settings.theme.NaNaSettingsTheme
 import com.nana.ui.settings.viewmodel.SettingsViewModel
+import com.nana.wakeword.WakeWordManager
 
 class SettingsActivity : ComponentActivity() {
     private val viewModel: SettingsViewModel by viewModels {
         object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return SettingsViewModel(SettingsRepository(SettingsStore(applicationContext))) as T
+                return SettingsViewModel(
+                    SettingsRepository(SettingsStore(applicationContext)),
+                    WakeWordManager(applicationContext)
+                ) as T
             }
         }
     }
@@ -25,7 +29,7 @@ class SettingsActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             NaNaSettingsTheme {
-                SettingsScreen(viewModel = viewModel)
+                SettingsScreen(viewModel = viewModel, onBack = ::finish)
             }
         }
     }

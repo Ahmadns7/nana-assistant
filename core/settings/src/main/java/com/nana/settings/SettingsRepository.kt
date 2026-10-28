@@ -21,6 +21,8 @@ class SettingsRepository(private val settingsStore: SettingsStore) {
     suspend fun setTTSEngine(engine: String): Result<Unit> = settingsStore.setTTSEngine(engine)
     suspend fun getTTSRate(): Float = settingsStore.getTTSRate()
     suspend fun setTTSRate(rate: Float): Result<Unit> = settingsStore.setTTSRate(rate)
+    suspend fun getTTSPitch(): Float = settingsStore.getTTSPitch()
+    suspend fun setTTSPitch(pitch: Float): Result<Unit> = settingsStore.setTTSPitch(pitch)
 
     // LLM
     suspend fun getLLMModel(): String = settingsStore.getLLMModel()
@@ -60,7 +62,7 @@ class SettingsRepository(private val settingsStore: SettingsStore) {
         wakeWordSensitivity = settingsStore.getWakeWordSensitivity(),
         ttsEngine = settingsStore.getTTSEngine(),
         ttsRate = settingsStore.getTTSRate(),
-        ttsPitch = 1.0f, // TODO: add pitch setting
+        ttsPitch = settingsStore.getTTSPitch(),
         llmModel = settingsStore.getLLMModel(),
         batteryAwareMode = settingsStore.getBatteryAwareMode(),
         accessibilityVerbose = settingsStore.getAccessibilityVerbose(),
