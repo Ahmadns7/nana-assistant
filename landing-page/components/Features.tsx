@@ -7,7 +7,7 @@ export function Features() {
         </svg>
       ),
       title: "Wake Word + Tap-to-Talk",
-      desc: "Say "Hey NaNa" or tap the mic. Works with screen off via foreground service.",
+      desc: 'Say "Hey NaNa" or tap the mic. Works with screen off via foreground service.',
     },
     {
       icon: (
@@ -16,7 +16,7 @@ export function Features() {
         </svg>
       ),
       title: "Media Control",
-      desc: "Play/pause/next/prev/volume. "What's playing?" reads real MediaSession metadata — title, artist, app.",
+      desc: 'Play/pause/next/prev/volume. "What\'s playing?" reads real MediaSession metadata — title, artist, app.',
     },
     {
       icon: (
@@ -53,7 +53,7 @@ export function Features() {
         </svg>
       ),
       title: "Voice Macros",
-      desc: "Custom commands: "Good night" = DND + alarm + dim screen. Chain any actions.",
+      desc: 'Custom commands: "Good night" = DND + alarm + dim screen. Chain any actions.',
     },
     {
       icon: (
