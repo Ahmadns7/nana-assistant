@@ -68,6 +68,7 @@ dependencies {
     implementation(project(":core:storage"))
     implementation(project(":core:settings"))
     implementation(project(":core:wakeword"))
+    implementation(project(":core:stt"))
     implementation("androidx.lifecycle:lifecycle-runtime-compose:${rootProject.ext.get("androidx.lifecycle.version")}")
     implementation("androidx.preference:preference-ktx:1.2.1")
 

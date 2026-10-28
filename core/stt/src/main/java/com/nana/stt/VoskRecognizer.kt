@@ -12,7 +12,6 @@ import org.vosk.Recognizer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.FileOutputStream
 
 /**
  * Offline speech-to-text using Vosk.
@@ -40,7 +39,7 @@ class VoskRecognizer(
             LibVosk.setLogLevel(LogLevel.WARNINGS) // Disable Vosk internal logs
 
             val modelFile = resolveModelPath()
-            if (!File(modelFile).exists()) {
+            if (!File(modelFile).isDirectory) {
                 return@withContext Result.Failure(Result.Error("MODEL_NOT_FOUND", "Vosk model not found at $modelFile"))
             }
 
@@ -56,51 +55,8 @@ class VoskRecognizer(
         }
     }
 
-    private fun resolveModelPath(): String {
-        val modelsDir = context.getModelsDir()
-        val modelDir = File(modelsDir, Constants.STT_MODEL_DIR)
-        if (modelDir.exists()) return modelDir.absolutePath
-
-        // Try to extract from assets (for first run)
-        return extractModelFromAssets().absolutePath
-    }
-
-    private fun extractModelFromAssets(): File {
-        val modelsDir = context.getModelsDir()
-        val modelDir = File(modelsDir, Constants.STT_MODEL_DIR)
-        modelDir.mkdirs()
-
-        // Vosk models are typically zip files - extract if needed
-        val assetName = "models/${Constants.STT_MODEL_DIR}.zip"
-        try {
-            context.assets.open(assetName).use { input ->
-                val zipFile = File(modelsDir, "${Constants.STT_MODEL_DIR}.zip")
-                FileOutputStream(zipFile).use { output ->
-                    input.copyTo(output)
-                }
-                // Extract zip
-                java.util.zip.ZipFile(zipFile).use { zip ->
-                    zip.entries().asSequence().forEach { entry ->
-                        val outFile = File(modelDir, entry.name)
-                        if (entry.isDirectory) {
-                            outFile.mkdirs()
-                        } else {
-                            outFile.parentFile?.mkdirs()
-                            zip.getInputStream(entry).use { input ->
-                                FileOutputStream(outFile).use { output ->
-                                    input.copyTo(output)
-                                }
-                            }
-                        }
-                    }
-                }
-                zipFile.delete()
-            }
-        } catch (e: Exception) {
-            NanaLogger.w("VoskRecognizer", "Model not in assets, expecting pre-downloaded: ${e.message}")
-        }
-        return modelDir
-    }
+    private fun resolveModelPath(): String = SttModelCatalog.modelDirectory(context)?.absolutePath
+        ?: File(File(context.getModelsDir(), "stt"), Constants.STT_MODEL_DIR).absolutePath
 
     fun setCallback(callback: Callback) {
         this.callback = callback

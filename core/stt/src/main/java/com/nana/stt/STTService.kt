@@ -18,6 +18,7 @@ import com.nana.common.Constants
 import com.nana.common.Result
 import com.nana.logging.NanaLogger
 import com.nana.core.stt.BuildConfig
+import com.nana.storage.SettingsStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -133,6 +134,7 @@ class STTService : Service() {
     private fun processAudioLoop() {
         val frameSize = 512 // 32ms at 16kHz
         val buffer = ShortArray(frameSize)
+        var listenFrames = 0
 
         while (recording && audioRecord != null) {
             val read = audioRecord!!.read(buffer, 0, frameSize)
@@ -141,23 +143,62 @@ class STTService : Service() {
                 if (hasSpeech) {
                     speechStarted = true
                     silenceFrames = 0
-                    recognizer.acceptWaveForm(buffer)
                 } else if (speechStarted) {
                     silenceFrames++
-                    recognizer.acceptWaveForm(buffer)
-                    if (silenceFrames >= maxSilenceFrames) {
-                        // End of speech detected
-                        val finalResult = recognizer.getFinalResult()
-                        val (text, confidence) = VoskRecognizer.parseFinalResult(finalResult)
-                        if (text.isNotBlank()) {
-                            // Will trigger callback via recognizer
-                        }
-                        stopListening()
-                        break
+                }
+                val utteranceEnded = recognizer.acceptWaveForm(buffer)
+                if (speechStarted) {
+                    val partial = VoskRecognizer.parsePartialResult(recognizer.getPartialResult())
+                    if (partial.isNotBlank()) sendSpeechUpdate(partial, partial = true)
+                }
+                if (utteranceEnded && speechStarted || silenceFrames >= maxSilenceFrames) {
+                    val (text, confidence) = VoskRecognizer.parseFinalResult(recognizer.getFinalResult())
+                    if (text.isNotBlank()) {
+                        NanaLogger.logSTTResult(text, confidence, 0)
+                        sendSpeechUpdate(text, partial = false, confidence = confidence)
                     }
+                    stopListening()
+                    resumeWakeWordIfEnabled()
+                    break
+                }
+                listenFrames++
+                if (listenFrames >= 900) {
+                    stopListening()
+                    resumeWakeWordIfEnabled()
+                    break
                 }
             }
         }
+    }
+
+    private fun resumeWakeWordIfEnabled() {
+        scope.launch(Dispatchers.IO) {
+            runCatching {
+                val settings = SettingsStore(applicationContext)
+                if (settings.getWakeWordEnabled()) {
+                    val modelId = SttModelCatalog.activeId(applicationContext)
+                    if (SttModelCatalog.isInstalled(applicationContext, modelId)) {
+                        val wakeIntent = Intent()
+                            .setClassName(packageName, "com.nana.wakeword.WakeWordService")
+                            .setAction("com.nana.wakeword.START")
+                            .putExtra("wake_phrase", settings.getWakeWordPhrase())
+                            .putExtra("speech_model_id", modelId)
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(wakeIntent)
+                        else startService(wakeIntent)
+                    }
+                }
+            }.onFailure { NanaLogger.e("STTService", "Could not resume wake-word service", it) }
+            stopSelf()
+        }
+    }
+
+    private fun sendSpeechUpdate(text: String, partial: Boolean, confidence: Float = 0f) {
+        val intent = Intent(Constants.ACTION_STT_RESULT)
+            .setPackage(packageName)
+            .putExtra(EXTRA_TEXT, text)
+            .putExtra(EXTRA_PARTIAL, partial)
+            .putExtra(EXTRA_CONFIDENCE, confidence)
+        sendBroadcast(intent)
     }
 
     private fun detectSpeech(pcm: ShortArray): Boolean {

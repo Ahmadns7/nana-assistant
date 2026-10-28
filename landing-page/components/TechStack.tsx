@@ -1,6 +1,6 @@
 export function TechStack() {
   const stack = [
-    { category: "Wake Word", items: ["Porcupine 3.0", "hey_nana.ppn (50KB)"] },
+    { category: "Wake Word", items: ["Vosk offline grammar", "User-selected wake phrase"] },
     { category: "STT", items: ["Vosk 0.3.45", "vosk-model-small-en-us (40MB)"] },
     { category: "TTS", items: ["Android TTS (system)", "Piper (ONNX, 50MB)"] },
     { category: "LLM", items: ["llama.cpp / MediaPipe", "Gemma 3 1B / 2B (Q4_K_M)"] },

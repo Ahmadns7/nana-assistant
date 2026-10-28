@@ -18,6 +18,8 @@ import com.nana.phone.PhoneController
 import com.nana.settings.SettingsRepository
 import com.nana.ui.main.QuickFeature
 import com.nana.wakeword.WakeWordManager
+import com.nana.stt.SttModelCatalog
+import com.nana.stt.STTManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -27,7 +29,8 @@ class MainViewModel(
     private val wakeWordManager: WakeWordManager,
     private val mediaController: MediaController,
     private val phoneController: PhoneController,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val sttManager: STTManager
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(UiState())
@@ -38,8 +41,12 @@ class MainViewModel(
         val isProcessing: Boolean = false,
         val statusText: String = "Ready when you are.",
         val lastTranscription: String = "",
-        val missingPermissions: List<String> = emptyList()
+        val missingPermissions: List<String> = emptyList(),
+        val showAppPicker: Boolean = false,
+        val installedApps: List<InstalledApp> = emptyList()
     )
+
+    data class InstalledApp(val label: String, val packageName: String)
 
     init {
         refreshAccess()
@@ -83,7 +90,13 @@ class MainViewModel(
             return
         }
 
-        wakeWordManager.start()
+        val modelId = SttModelCatalog.activeId(getApplication<Application>())
+        if (!SttModelCatalog.isInstalled(getApplication<Application>(), modelId)) {
+            _uiState.value = _uiState.value.copy(statusText = "Download a small offline speech model in Settings to enable voice features.")
+            return
+        }
+        val phrase = settingsRepository.getWakeWordPhrase()
+        wakeWordManager.start(phrase, modelId)
             .onSuccess {
                 wakeWordManager.setDetectionCallback {
                     _uiState.value = _uiState.value.copy(
@@ -109,7 +122,27 @@ class MainViewModel(
     fun openAppSettings() = openSystemPanel(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "App permissions", "package:${getApplication<Application>().packageName}")
 
     fun onTapToTalk() {
-        setStatus("Tap-to-talk needs an offline speech model. Choose a Vosk model in Settings to enable it.")
+        viewModelScope.launch {
+            val context = getApplication<Application>()
+            val modelId = SttModelCatalog.activeId(context)
+            if (!SttModelCatalog.isInstalled(context, modelId)) {
+                setStatus("Download a small offline speech model in Settings to use voice input.")
+                return@launch
+            }
+            when (val result = sttManager.startListening()) {
+                is Result.Success<*> -> _uiState.value = _uiState.value.copy(isListening = true, isProcessing = false, statusText = "Listening on this device…")
+                is Result.Failure -> setStatus(result.error.message)
+            }
+        }
+    }
+
+    fun onSpeechUpdate(text: String, partial: Boolean) {
+        _uiState.value = _uiState.value.copy(
+            isListening = partial,
+            isProcessing = partial,
+            lastTranscription = text,
+            statusText = if (partial) text else if (text.isBlank()) "No speech was recognized." else "Heard: $text"
+        )
     }
 
     fun onMediaPlayPause() {
@@ -126,6 +159,36 @@ class MainViewModel(
         if (intent == null) setStatus("WhatsApp is not installed.")
         else runCatching { context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
             .onFailure { setStatus("Could not open WhatsApp.") }
+    }
+
+    fun showAllApps() {
+        val context = getApplication<Application>()
+        val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+        val apps = context.packageManager.queryIntentActivities(launcherIntent, 0)
+            .mapNotNull { info ->
+                val packageName = info.activityInfo?.packageName ?: return@mapNotNull null
+                if (packageName == context.packageName) return@mapNotNull null
+                InstalledApp(info.loadLabel(context.packageManager).toString(), packageName)
+            }
+            .distinctBy { it.packageName }
+            .sortedBy { it.label.lowercase() }
+        _uiState.value = _uiState.value.copy(showAppPicker = true, installedApps = apps)
+    }
+
+    fun dismissAppPicker() {
+        _uiState.value = _uiState.value.copy(showAppPicker = false)
+    }
+
+    fun launchInstalledApp(packageName: String) {
+        val launchIntent = getApplication<Application>().packageManager.getLaunchIntentForPackage(packageName)
+        if (launchIntent == null) {
+            setStatus("That app can no longer be opened.")
+        } else {
+            runCatching { getApplication<Application>().startActivity(launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                .onSuccess { setStatus("Opening app.") }
+                .onFailure { setStatus("Could not open that app.") }
+        }
+        dismissAppPicker()
     }
 
     fun performQuickFeature(feature: QuickFeature) {

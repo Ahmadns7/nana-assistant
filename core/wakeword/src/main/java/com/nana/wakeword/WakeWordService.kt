@@ -23,6 +23,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlin.math.max
+import com.nana.stt.SttModelCatalog
+import com.nana.stt.STTService
 
 /**
  * Foreground service for continuous wake word detection.
@@ -38,6 +40,9 @@ class WakeWordService : Service() {
     private val scope = CoroutineScope(Dispatchers.Default + Job())
     private var wakeLock: PowerManager.WakeLock? = null
     private var detectionCallback: ((String) -> Unit)? = null
+    private var wakePhrase = WakeWordDetector.DEFAULT_PHRASE
+    private var speechModelId = "en_us"
+    private var lastDetectionAt = 0L
     private val notificationId = 1001
     private val channelId = "wake_word_channel"
 
@@ -46,6 +51,8 @@ class WakeWordService : Service() {
         const val ACTION_STOP = "com.nana.wakeword.STOP"
         const val ACTION_DETECTION = "com.nana.wakeword.DETECTION"
         const val EXTRA_KEYWORD = "keyword"
+        const val EXTRA_WAKE_PHRASE = "wake_phrase"
+        const val EXTRA_MODEL_ID = "speech_model_id"
     }
 
     override fun onCreate() {
@@ -61,7 +68,9 @@ class WakeWordService : Service() {
         when (action) {
             ACTION_START -> {
                 try {
-                    // Promote before loading Porcupine or touching the microphone. Android
+                    wakePhrase = intent?.getStringExtra(EXTRA_WAKE_PHRASE) ?: wakePhrase
+                    speechModelId = intent?.getStringExtra(EXTRA_MODEL_ID) ?: SttModelCatalog.activeId(this)
+                    // Promote before loading the speech model or touching the microphone. Android
                     // requires a started foreground service to promote promptly.
                     showForegroundNotification("Starting wake word detection...")
                     startDetection()
@@ -87,7 +96,7 @@ class WakeWordService : Service() {
 
         startupJob = scope.launch(Dispatchers.IO) {
             try {
-                val initResult = detector.initialize()
+                val initResult = detector.initialize(wakePhrase, speechModelId)
                 if (initResult.isFailure) {
                     NanaLogger.e("WakeWordService", "Detector init failed: ${(initResult as? Result.Failure)?.error?.message}")
                     stopSelf()
@@ -95,7 +104,7 @@ class WakeWordService : Service() {
                 }
 
                 startAudioRecording()
-                updateNotification("Listening for 'Hey NaNa'...")
+                updateNotification("Listening for '$wakePhrase'…")
             } catch (e: SecurityException) {
                 NanaLogger.e("WakeWordService", "Microphone permission is required", e)
                 stopSelf()
@@ -153,9 +162,9 @@ class WakeWordService : Service() {
             val recorder = audioRecord ?: break
             val read = recorder.read(buffer, 0, frameLength)
             if (read == frameLength) {
-                val keywordIndex = detector.process(buffer)
-                if (keywordIndex >= 0) {
-                    NanaLogger.i("WakeWordService", "Wake word detected! index=$keywordIndex")
+                if (detector.process(buffer) && android.os.SystemClock.elapsedRealtime() - lastDetectionAt > 3000L) {
+                    lastDetectionAt = android.os.SystemClock.elapsedRealtime()
+                    NanaLogger.i("WakeWordService", "Wake phrase detected: $wakePhrase")
                     onWakeWordDetected()
                 }
             } else if (read < 0) {
@@ -171,13 +180,24 @@ class WakeWordService : Service() {
 
         // Broadcast detection
         val intent = Intent(Constants.ACTION_WAKE_WORD_DETECTED)
+            .setPackage(packageName)
+            .putExtra(EXTRA_KEYWORD, wakePhrase)
         sendBroadcast(intent)
 
         // Update notification
         updateNotification("Wake word detected!")
 
         // Callback for UI
-        detectionCallback?.invoke("hey_nana")
+        detectionCallback?.invoke(wakePhrase)
+
+        // Release the microphone before handing the command to offline speech recognition.
+        stopDetection()
+        val speechIntent = Intent(this, STTService::class.java).setAction(STTService.ACTION_START_LISTENING)
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(speechIntent)
+            else startService(speechIntent)
+        }.onFailure { NanaLogger.e("WakeWordService", "Could not start offline speech recognition", it) }
+        stopSelf()
     }
 
     private fun stopDetection() {

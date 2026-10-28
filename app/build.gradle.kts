@@ -15,13 +15,13 @@ android {
         applicationId = "com.nana.assistant"
         minSdk = rootProject.ext.get("android.minSdk").toString().toInt()
         targetSdk = rootProject.ext.get("android.targetSdk").toString().toInt()
-        versionCode = 3
-        versionName = "1.0.2"
+        versionCode = 4
+        versionName = "1.0.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
         }
-        // No INTERNET permission - fully offline
+        // Network requests are limited to Android DownloadManager for explicit model downloads.
     }
     signingConfigs {
         create("release") {

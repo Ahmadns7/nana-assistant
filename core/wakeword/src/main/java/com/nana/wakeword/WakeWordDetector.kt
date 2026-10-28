@@ -1,109 +1,89 @@
 package com.nana.wakeword
 
 import android.content.Context
-import com.nana.common.Constants
-import com.nana.common.getModelsDir
 import com.nana.common.Result
 import com.nana.logging.NanaLogger
-import ai.picovoice.porcupine.Porcupine
-import ai.picovoice.porcupine.PorcupineException
+import com.nana.stt.SttModelCatalog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.File
-import java.io.FileOutputStream
+import org.json.JSONArray
+import org.json.JSONObject
+import org.vosk.LibVosk
+import org.vosk.LogLevel
+import org.vosk.Model
+import org.vosk.Recognizer
 
-/**
- * Offline wake word detection using Porcupine.
- * Runs in a foreground service with real-time audio processing.
- */
-class WakeWordDetector(
-    private val context: Context,
-    private val modelPath: String? = null
-) {
-    private var porcupine: Porcupine? = null
+/** Offline phrase detection constrained to the selected small Vosk model. */
+class WakeWordDetector(private val context: Context) {
+    private var model: Model? = null
+    private var recognizer: Recognizer? = null
     private var initialized = false
-    private var frameLength = 512 // Porcupine default
+    private var wakePhrase = DEFAULT_PHRASE
 
-    suspend fun initialize(): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun initialize(phrase: String, modelId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        release()
         try {
-            val keywordPath = modelPath ?: resolveModelPath()
-            if (!File(keywordPath).exists()) {
-                return@withContext Result.Failure(Result.Error("MODEL_NOT_FOUND", "Wake word model not found at $keywordPath"))
+            val normalized = normalizePhrase(phrase)
+            if (normalized.isBlank()) {
+                return@withContext Result.Failure(Result.Error("INVALID_WAKE_PHRASE", "Enter a wake phrase first."))
             }
+            val modelDirectory = SttModelCatalog.modelDirectory(context, modelId)
+                ?.takeIf { SttModelCatalog.isInstalled(context, modelId) }
+                ?: return@withContext Result.Failure(Result.Error("MODEL_NOT_FOUND", "Download a small speech model before enabling wake-word detection."))
 
-            porcupine = Porcupine.Builder()
-                .setAccessKey(getAccessKey()) // User must provide via build config or secure storage
-                .setKeywordPath(keywordPath)
-                .setSensitivity(Constants.WAKE_WORD_SENSITIVITY)
-                .build(context)
-
-            frameLength = porcupine!!.frameLength
+            LibVosk.setLogLevel(LogLevel.WARNINGS)
+            val loadedModel = Model(modelDirectory.absolutePath)
+            model = loadedModel
+            val grammar = JSONArray().put(normalized).toString()
+            recognizer = Recognizer(loadedModel, SAMPLE_RATE.toFloat(), grammar)
+            wakePhrase = normalized
             initialized = true
-            NanaLogger.i("WakeWordDetector", "Porcupine initialized with model: $keywordPath, frameLength=$frameLength")
+            NanaLogger.i("WakeWordDetector", "Vosk wake phrase ready: $normalized ($modelId)")
             Result.Success(Unit)
-        } catch (e: PorcupineException) {
-            NanaLogger.e("WakeWordDetector", "Porcupine init failed", e)
-            Result.Failure(Result.Error("INIT_FAILED", "Porcupine initialization failed", e, recoverable = false))
-        } catch (e: Exception) {
-            NanaLogger.e("WakeWordDetector", "Unexpected error", e)
-            Result.Failure(Result.Error("INIT_FAILED", "Wake word detector init failed", e))
+        } catch (error: Exception) {
+            release()
+            NanaLogger.e("WakeWordDetector", "Could not initialize Vosk wake phrase", error)
+            Result.Failure(Result.Error("WAKE_WORD_INIT_FAILED", error.message ?: "Could not initialize offline wake-word detection.", error))
         }
     }
 
-    private fun resolveModelPath(): String {
-        val modelsDir = context.getModelsDir()
-        val modelFile = File(modelsDir, Constants.WAKE_WORD_MODEL_NAME)
-        if (modelFile.exists()) return modelFile.absolutePath
-
-        // Try to copy from assets
-        return copyModelFromAssets().absolutePath
-    }
-
-    private fun copyModelFromAssets(): File {
-        val modelsDir = context.getModelsDir()
-        val dest = File(modelsDir, Constants.WAKE_WORD_MODEL_NAME)
-        context.assets.open("models/${Constants.WAKE_WORD_MODEL_NAME}").use { input ->
-            FileOutputStream(dest).use { output ->
-                input.copyTo(output)
-            }
-        }
-        return dest
-    }
-
-    private fun getAccessKey(): String {
-        // In production: retrieve from secure storage or build config
-        // For now, return placeholder - user must replace with actual Picovoice access key
-        return System.getenv("PORCUPINE_ACCESS_KEY") ?: "YOUR_PORCUPINE_ACCESS_KEY_HERE"
-    }
-
-    /**
-     * Process a single audio frame for wake word detection.
-     * @param pcm Short array of length frameLength (512 samples at 16kHz)
-     * @return keyword index if detected (-1 if none), -2 on error
-     */
-    fun process(pcm: ShortArray): Int {
-        if (!initialized || porcupine == null) return -2
+    fun process(pcm: ShortArray): Boolean {
+        val activeRecognizer = recognizer ?: return false
+        if (!initialized) return false
         return try {
-            porcupine!!.process(pcm)
-        } catch (e: Exception) {
-            NanaLogger.e("WakeWordDetector", "Process error", e)
-            -2
+            if (activeRecognizer.acceptWaveForm(pcm, pcm.size)) {
+                val text = JSONObject(activeRecognizer.result).optString("text")
+                normalizePhrase(text) == wakePhrase
+            } else {
+                false
+            }
+        } catch (error: Exception) {
+            NanaLogger.e("WakeWordDetector", "Vosk wake phrase processing failed", error)
+            false
         }
     }
 
-    fun getFrameLength(): Int = frameLength
-
-    fun getSampleRate(): Int = porcupine?.sampleRate ?: SAMPLE_RATE
-
+    fun getFrameLength(): Int = FRAME_LENGTH
+    fun getSampleRate(): Int = SAMPLE_RATE
     fun release() {
-        porcupine?.delete()
-        porcupine = null
         initialized = false
+        recognizer?.close()
+        model?.close()
+        recognizer = null
+        model = null
     }
 
     companion object {
         const val SAMPLE_RATE = 16000
         const val CHANNELS = 1
         const val ENCODING = android.media.AudioFormat.ENCODING_PCM_16BIT
+        const val FRAME_LENGTH = 3200 // 200 ms chunks work well with the Vosk streaming decoder.
+        const val DEFAULT_PHRASE = "hey nana"
+
+        fun normalizePhrase(value: String): String = value
+            .lowercase()
+            .replace(Regex("[^\\p{L}\\p{N} ]"), " ")
+            .trim()
+            .replace(Regex("\\s+"), " ")
     }
 }

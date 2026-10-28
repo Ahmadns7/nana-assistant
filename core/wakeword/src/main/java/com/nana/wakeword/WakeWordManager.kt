@@ -9,6 +9,7 @@ import com.nana.logging.NanaLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import com.nana.stt.SttModelCatalog
 
 /**
  * High-level manager for wake word service lifecycle.
@@ -17,14 +18,16 @@ class WakeWordManager(private val context: Context) {
     private var serviceStarted = false
     private var detectionCallback: ((String) -> Unit)? = null
 
-    suspend fun start(): Result<Unit> = kotlinx.coroutines.withContext(Dispatchers.IO) {
-        if (serviceStarted) return@withContext Result.Success(Unit)
+    suspend fun start(phrase: String = "hey nana", modelId: String = SttModelCatalog.activeId(context)): Result<Unit> = kotlinx.coroutines.withContext(Dispatchers.IO) {
 
         if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             return@withContext Result.Failure(Result.Error.permissionDenied("microphone"))
         }
 
-        val intent = Intent(context, WakeWordService::class.java).setAction(WakeWordService.ACTION_START)
+        val intent = Intent(context, WakeWordService::class.java)
+            .setAction(WakeWordService.ACTION_START)
+            .putExtra(WakeWordService.EXTRA_WAKE_PHRASE, phrase)
+            .putExtra(WakeWordService.EXTRA_MODEL_ID, modelId)
         try {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
@@ -44,8 +47,6 @@ class WakeWordManager(private val context: Context) {
     }
 
     suspend fun stop(): Result<Unit> = kotlinx.coroutines.withContext(Dispatchers.IO) {
-        if (!serviceStarted) return@withContext Result.Success(Unit)
-
         val intent = Intent(context, WakeWordService::class.java).setAction(WakeWordService.ACTION_STOP)
         context.stopService(intent)
         serviceStarted = false

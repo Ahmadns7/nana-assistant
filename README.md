@@ -1,8 +1,8 @@
 # NaNa Assistant
 
-**A fully offline, voice-controlled AI phone assistant for Android.**
+**An offline-first, voice-enabled phone assistant for Android.**
 
-NaNa lets you control your phone entirely by voice — no internet required. It hears your commands, understands intent, reads the screen, and acts across any app, then speaks back accurate results.
+NaNa recognizes speech and a user-selected wake phrase on-device after you download a compact Vosk model. Model archives are downloaded only when you choose a model, through Android DownloadManager, and installed in app storage. Speech recognition and wake detection then work offline. This build does not include an active on-device LLM inference engine.
 
 ## Features
 
@@ -28,7 +28,7 @@ NaNa lets you control your phone entirely by voice — no internet required. It 
 - **Battery-aware mode**: Lowers wake-word/model activity when battery is low
 
 ### Safety & Privacy
-- **Zero network permission** — no INTERNET in manifest
+- **Offline processing** — speech recognition and wake detection run on-device; Android DownloadManager handles only model downloads explicitly started by the user
 - **Confirm before irreversible actions**: Sending messages, calls, deleting, payments
 - **Banking/payment screens blocked** — refused with explanation
 - **Visible indicator & kill switch** when listening or controlling screen
@@ -73,8 +73,8 @@ NaNa lets you control your phone entirely by voice — no internet required. It 
 
 | Component | Technology | Model/Implementation |
 |-----------|------------|---------------------|
-| Wake Word | Porcupine | `hey_nana.ppn` (50KB) |
-| STT | Vosk | `vosk-model-small-en-us-0.15` (40MB) |
+| Wake Word | Vosk grammar | Uses the selected compact speech model |
+| STT | Vosk | Downloadable small language models (about 36–45MB) |
 | TTS | Android TTS / Piper | System / `piper/en_US-lessac-medium.onnx` (50MB) |
 | LLM | llama.cpp / MediaPipe | Gemma 2B/3 1B / Phi-3 Mini (0.8-2.3GB) |
 | Screen Control | AccessibilityService | Native Android API |
@@ -87,7 +87,7 @@ NaNa lets you control your phone entirely by voice — no internet required. It 
 | Model | Size | RAM | Latency (MID) | Latency (HIGH) | Device Tier |
 |-------|------|-----|---------------|----------------|-------------|
 | **Wake Word** | | | | | |
-| Porcupine Hey NaNa | 50 KB | 2 MB | 10 ms | 5 ms | All |
+| Vosk small English | 40 MB | ~80 MB | Device dependent | Device dependent | Entry-level phones |
 | **STT** | | | | | |
 | Vosk Small EN-US | 40 MB | 80 MB | 300 ms | 200 ms | LOW+ |
 | Vosk Small Multi | 80 MB | 120 MB | 400 ms | 300 ms | MID+ |
@@ -113,14 +113,12 @@ NaNa lets you control your phone entirely by voice — no internet required. It 
 
 ### Model Setup
 
-Models are **not included** in the repo (too large). Place them in `app/src/main/assets/models/`:
+Speech models are **not included** in the APK. Choose and download one in Settings; Android DownloadManager stores the archive before NaNa extracts it to private app storage:
 
 ```
 app/src/main/assets/models/
-├── wakeword/
-│   └── hey_nana.ppn              # Porcupine wake word (get from Picovoice Console)
 ├── stt/
-│   └── vosk-model-small-en-us-0.15/  # Download from https://alphacephei.com/vosk/models
+│   └── vosk-model-small-en-us-0.15/  # Installed from Android DownloadManager
 ├── llm/
 │   ├── gemma-3-1b-it-q4_k_m.gguf     # From Hugging Face (gguf format)
 │   ├── gemma-2b-it-q4_k_m.gguf
@@ -132,7 +130,7 @@ app/src/main/assets/models/
 │       └── speaker_embeddings.bin
 ```
 
-**Wake Word**: Get a free Porcupine access key from [Picovoice Console](https://console.picovoice.ai/), create a "Hey NaNa" keyword, download `.ppn` file, and set `PORCUPINE_ACCESS_KEY` environment variable or add to `local.properties`.
+**Offline speech setup**: Open Settings → Offline speech models and download a small language model over Wi-Fi. Android DownloadManager performs the transfer and shows its own notification. Select the installed model, enter a wake phrase supported by its vocabulary, then enable wake-word detection. NaNa has no in-app HTTP downloader; Android requires the app's `INTERNET` manifest permission to enqueue system-managed downloads.
 
 ### Build Commands
 
@@ -195,7 +193,7 @@ NaNa: [Clicks send] → "Message sent to John"
 NaNa/
 ├── app/                    # Main application module
 ├── core/
-│   ├── wakeword/           # Porcupine wake word detection
+│   ├── wakeword/           # Vosk phrase detection
 │   ├── stt/                # Vosk speech-to-text
 │   ├── tts/                # Android TTS + Piper
 │   ├── llm/                # On-device LLM (llama.cpp/MediaPipe)
@@ -295,7 +293,7 @@ NaNa/
 
 5. **Model Size**: LLM models require 1-3GB storage and 1-2.5GB RAM. Not suitable for low-end devices (<3GB RAM).
 
-6. **Wake Word False Positives**: Porcupine sensitivity tunable; may trigger on similar sounds.
+6. **Wake Phrase Recognition**: Detection uses the selected Vosk model; accuracy depends on the model language and phrase vocabulary.
 
 7. **STT Accuracy**: Vosk small model ~90% WER on clear speech; degrades with noise/accents.
 
@@ -334,7 +332,7 @@ MIT License — see LICENSE file.
 
 ## Acknowledgments
 
-- [Porcupine](https://picovoice.ai/platform/porcupine/) — Wake word
+- [Vosk models](https://alphacephei.com/vosk/models) — Offline speech recognition and wake phrases
 - [Vosk](https://alphacephei.com/vosk/) — Offline STT
 - [llama.cpp](https://github.com/ggerganov/llama.cpp) — LLM inference
 - [Piper](https://github.com/rhasspy/piper) — Offline TTS

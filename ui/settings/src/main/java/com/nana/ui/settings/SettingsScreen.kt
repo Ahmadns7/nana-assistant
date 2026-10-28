@@ -28,6 +28,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
@@ -60,6 +62,7 @@ private val Mint = Color(0xFFB9E7D6)
 fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val feedback by viewModel.feedback.collectAsStateWithLifecycle()
+    val speechModels by viewModel.availableSpeechModels.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val openSystemSettings: (String) -> Unit = { action ->
         runCatching { context.startActivity(Intent(action)) }
@@ -107,14 +110,18 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                         checked = settings.wakeWordEnabled,
                         onCheckedChange = viewModel::setWakeWordEnabled
                     )
-                    SliderRow(
-                        title = "Wake word sensitivity",
-                        valueLabel = "${(settings.wakeWordSensitivity * 100).toInt()}%",
-                        value = settings.wakeWordSensitivity,
-                        range = 0.2f..0.9f,
-                        onValueChange = viewModel::setWakeWordSensitivity
+                    var wakePhrase by remember(settings.wakeWordPhrase) { mutableStateOf(settings.wakeWordPhrase) }
+                    OutlinedTextField(
+                        value = wakePhrase,
+                        onValueChange = { wakePhrase = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Your wake phrase") },
+                        placeholder = { Text("Hey NaNa") },
+                        singleLine = true,
+                        supportingText = { Text("Choose 1–5 words supported by your speech model.") }
                     )
-                    Text("Wake word detection needs microphone access, a Hey NaNa model and its Picovoice key.", fontSize = 12.sp, color = Muted)
+                    TextButton(onClick = { viewModel.setWakeWordPhrase(wakePhrase) }) { Text("Save wake phrase") }
+                    Text("Wake detection runs on-device with your selected speech model. Download a model below first.", fontSize = 12.sp, color = Muted)
                 }
             }
 
@@ -151,16 +158,32 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
 
             item {
                 SettingsGroup(title = "On-device intelligence", detail = "Models stay on your phone") {
-                    SelectorRow(
-                        title = "Assistant model",
-                        current = settings.llmModel.displayModel(),
-                        options = listOf(
-                            "Gemma 3 · 1B" to "gemma_3_1b_q4",
-                            "Gemma · 2B" to "gemma_2b_q4",
-                            "Phi-3 Mini" to "phi_3_mini_q4"
-                        ),
-                        onSelect = viewModel::setLLMModel
-                    )
+                    Text("Offline speech models", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Ink)
+                    Text("Small Vosk models power offline speech recognition and custom wake phrases.", fontSize = 12.sp, color = Muted)
+                    speechModels.forEach { state ->
+                        Card(
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = if (state.model.active) Mint.copy(alpha = 0.35f) else Canvas)
+                        ) {
+                            Column(Modifier.fillMaxWidth().padding(13.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text(state.model.name, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Ink)
+                                        Text("${state.model.sizeLabel} · ${if (state.model.active) "Selected" else if (state.model.downloaded) "Ready offline" else "Download via Android"}", fontSize = 11.sp, color = Muted)
+                                    }
+                                    when {
+                                        state.queued -> Text("${state.model.progress ?: 0}%", fontSize = 12.sp, color = Muted)
+                                        state.model.active -> Text("Active", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Ink)
+                                        state.model.downloaded -> TextButton(onClick = { viewModel.selectSpeechModel(state.model.id) }) { Text("Use model") }
+                                        else -> TextButton(onClick = { viewModel.downloadSpeechModel(state.model.id) }) { Text("Download") }
+                                    }
+                                }
+                                if (state.queued) LinearProgressIndicator(progress = { (state.model.progress ?: 0) / 100f }, modifier = Modifier.fillMaxWidth())
+                            }
+                        }
+                    }
+                    Text("Downloads are user-started, Wi-Fi only, and managed by Android Download Manager. Model recognition stays offline.", fontSize = 11.sp, color = Muted)
+                    Text("These compact models enable offline speech input and wake phrases. Conversational Gemma/Phi generation is not available in this build yet.", fontSize = 12.sp, color = Muted)
                     ToggleRow(
                         title = "Battery-aware mode",
                         subtitle = "Reduce background activity when power is low",
@@ -207,7 +230,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
             item {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     Spacer(Modifier.size(8.dp).background(Mint, CircleShape))
-                    Text("  NaNa Assistant  ·  Version 1.0.2", fontSize = 12.sp, color = Muted)
+                    Text("  NaNa Assistant  ·  Version 1.0.3", fontSize = 12.sp, color = Muted)
                 }
             }
         }

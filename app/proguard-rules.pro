@@ -26,9 +26,6 @@
 # Keep Vosk classes
 -keep class com.alphacephei.vosk.** { *; }
 
-# Keep Porcupine classes
--keep class ai.picovoice.porcupine.** { *; }
-
 # Keep Kotlin coroutines
 -keep class kotlinx.coroutines.** { *; }
 
@@ -40,7 +37,6 @@
 
 # Don't warn about missing classes for optional dependencies
 -dontwarn com.google.mediapipe.**
--dontwarn ai.picovoice.porcupine.**
 -dontwarn com.alphacephei.vosk.**
 -dontwarn com.google.mlkit.**
 

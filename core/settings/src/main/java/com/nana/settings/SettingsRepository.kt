@@ -15,6 +15,8 @@ class SettingsRepository(private val settingsStore: SettingsStore) {
     suspend fun setWakeWordEnabled(enabled: Boolean): Result<Unit> = settingsStore.setWakeWordEnabled(enabled)
     suspend fun getWakeWordSensitivity(): Float = settingsStore.getWakeWordSensitivity()
     suspend fun setWakeWordSensitivity(sensitivity: Float): Result<Unit> = settingsStore.setWakeWordSensitivity(sensitivity)
+    suspend fun getWakeWordPhrase(): String = settingsStore.getWakeWordPhrase()
+    suspend fun setWakeWordPhrase(phrase: String): Result<Unit> = settingsStore.setWakeWordPhrase(phrase)
 
     // TTS
     suspend fun getTTSEngine(): String = settingsStore.getTTSEngine()
@@ -47,6 +49,7 @@ class SettingsRepository(private val settingsStore: SettingsStore) {
     data class AllSettings(
         val wakeWordEnabled: Boolean,
         val wakeWordSensitivity: Float,
+        val wakeWordPhrase: String,
         val ttsEngine: String,
         val ttsRate: Float,
         val ttsPitch: Float,
@@ -60,6 +63,7 @@ class SettingsRepository(private val settingsStore: SettingsStore) {
     suspend fun getAllSettings(): AllSettings = AllSettings(
         wakeWordEnabled = settingsStore.getWakeWordEnabled(),
         wakeWordSensitivity = settingsStore.getWakeWordSensitivity(),
+        wakeWordPhrase = settingsStore.getWakeWordPhrase(),
         ttsEngine = settingsStore.getTTSEngine(),
         ttsRate = settingsStore.getTTSRate(),
         ttsPitch = settingsStore.getTTSPitch(),

@@ -10,14 +10,19 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -27,6 +32,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -62,9 +68,8 @@ fun MainScreen(viewModel: MainViewModel, onRequestPermissions: () -> Unit, onOpe
                         Text("NaNa", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Ink)
                         Text("YOUR ON-DEVICE ASSISTANT", fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = Muted, letterSpacing = 1.5.sp)
                     }
-                    IconButton(onClick = onOpenSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = "Open settings", tint = Ink)
-                    }
+                    IconButton(onClick = viewModel::showAllApps) { Icon(Icons.Default.Apps, contentDescription = "Open all apps", tint = Ink) }
+                    IconButton(onClick = onOpenSettings) { Icon(Icons.Default.Settings, contentDescription = "Open settings", tint = Ink) }
                 }
             }
 
@@ -156,6 +161,27 @@ fun MainScreen(viewModel: MainViewModel, onRequestPermissions: () -> Unit, onOpe
                 }
             }
         }
+    }
+
+    if (state.showAppPicker) {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissAppPicker,
+            title = { Text("All apps", color = Ink, fontWeight = FontWeight.SemiBold) },
+            text = {
+                if (state.installedApps.isEmpty()) {
+                    Text("No launchable apps were found.", color = Muted)
+                } else {
+                    Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState())) {
+                        state.installedApps.forEach { app ->
+                            TextButton(onClick = { viewModel.launchInstalledApp(app.packageName) }, modifier = Modifier.fillMaxWidth()) {
+                                Text(app.label, modifier = Modifier.fillMaxWidth(), color = Ink)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = viewModel::dismissAppPicker) { Text("Close") } }
+        )
     }
 }
 

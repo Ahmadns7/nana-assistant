@@ -1,10 +1,14 @@
 package com.nana.ui.main
 
 import android.content.Intent
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.IntentFilter
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -18,8 +22,18 @@ import com.nana.ui.main.theme.NaNaTheme
 import com.nana.ui.main.viewmodel.MainViewModel
 import com.nana.ui.settings.SettingsActivity
 import com.nana.wakeword.WakeWordManager
+import com.nana.stt.STTManager
+import com.nana.common.Constants
 
 class MainActivity : ComponentActivity() {
+    private val speechResultReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            viewModel.onSpeechUpdate(
+                intent?.getStringExtra("text").orEmpty(),
+                intent?.getBooleanExtra("partial", false) ?: false
+            )
+        }
+    }
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) {
@@ -35,7 +49,8 @@ class MainActivity : ComponentActivity() {
                     WakeWordManager(applicationContext),
                     MediaController(applicationContext),
                     PhoneController(applicationContext),
-                    SettingsRepository(SettingsStore(applicationContext))
+                    SettingsRepository(SettingsStore(applicationContext)),
+                    STTManager(applicationContext)
                 ) as T
             }
         }
@@ -53,6 +68,16 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         viewModel.onResume()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        ContextCompat.registerReceiver(this, speechResultReceiver, IntentFilter(Constants.ACTION_STT_RESULT), ContextCompat.RECEIVER_NOT_EXPORTED)
+    }
+
+    override fun onStop() {
+        runCatching { unregisterReceiver(speechResultReceiver) }
+        super.onStop()
     }
 
     private fun requestAppPermissions() {

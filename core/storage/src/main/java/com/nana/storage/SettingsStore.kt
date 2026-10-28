@@ -20,6 +20,7 @@ class SettingsStore(private val context: Context) {
 
     private val WAKE_WORD_ENABLED = booleanPreferencesKey("wake_word_enabled")
     private val WAKE_WORD_SENSITIVITY = floatPreferencesKey("wake_word_sensitivity")
+    private val WAKE_WORD_PHRASE = stringPreferencesKey("wake_word_phrase")
     private val TTS_ENGINE = stringPreferencesKey("tts_engine")
     private val TTS_RATE = floatPreferencesKey("tts_rate")
     private val TTS_PITCH = floatPreferencesKey("tts_pitch")
@@ -30,7 +31,7 @@ class SettingsStore(private val context: Context) {
     private val CONFIRM_ACTIONS = booleanPreferencesKey("confirm_actions")
 
     suspend fun getWakeWordEnabled(): Boolean = dataStore.data
-        .map { it[WAKE_WORD_ENABLED] ?: true }
+        .map { it[WAKE_WORD_ENABLED] ?: false }
         .first()
 
     suspend fun setWakeWordEnabled(enabled: Boolean): Result<Unit> = try {
@@ -49,6 +50,15 @@ class SettingsStore(private val context: Context) {
         Result.Success(Unit)
     } catch (e: Exception) {
         Result.Failure(Result.Error("STORE_FAILED", "Failed to save setting", e))
+    }
+
+    suspend fun getWakeWordPhrase(): String = dataStore.data.map { it[WAKE_WORD_PHRASE] ?: "hey nana" }.first()
+
+    suspend fun setWakeWordPhrase(phrase: String): Result<Unit> = try {
+        dataStore.edit { it[WAKE_WORD_PHRASE] = phrase.trim().lowercase() }
+        Result.Success(Unit)
+    } catch (e: Exception) {
+        Result.Failure(Result.Error("STORE_FAILED", "Failed to save wake phrase", e))
     }
 
     suspend fun getTTSEngine(): String = dataStore.data

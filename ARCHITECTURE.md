@@ -1,7 +1,7 @@
 # NaNa Architecture
 
 ## Overview
-NaNa is a fully offline, voice-controlled AI phone assistant for Android. All processing happens on-device with zero network permissions.
+NaNa is an offline-first Android voice assistant. Speech recognition and wake phrase processing run on-device after a user starts a small-model download through Android DownloadManager. The app declares INTERNET because Android requires it to enqueue system-managed downloads; there is no in-app HTTP model downloader.
 
 ## Module Diagram
 
@@ -28,7 +28,7 @@ NaNa is a fully offline, voice-controlled AI phone assistant for Android. All pr
 │                                                                             │
 │  ┌─────────────┐ ┌─────────┐ ┌──────┐ ┌─────┐ ┌──────────────┐ ┌────────┐ │
 │  │  wakeword   │ │   stt   │ │ tts  │ │ llm │ │ accessibility│ │ media  │ │
-│  │  (Porcupine)│ │ (Vosk)  │ │(TTS) │ │(LLM)│ │ (Accessibility│ │(Media3)│ │
+│  │  (Vosk)     │ │ (Vosk)  │ │(TTS) │ │(LLM)│ │ (Accessibility│ │(Media3)│ │
 │  └──────┬──────┘ └────┬────┘ └──┬───┘ └─┬───┘ └──────┬───────┘ └───┬────┘ │
 │         │             │         │      │         │               │       │
 │  ┌──────┴─────┐ ┌─────┴────┐ ┌────┴───┐ ┌─────┴────┐ ┌──────────┴──┐ ┌────┴───┐
@@ -59,7 +59,7 @@ NaNa is a fully offline, voice-controlled AI phone assistant for Android. All pr
 User says "Hey NaNa"
     │
     ▼
-WakeWordService (Porcupine) detects wake word
+WakeWordService (Vosk grammar) detects the selected wake phrase
     │
     ▼
 STT Module (Vosk) starts recording → transcribes speech
@@ -133,7 +133,7 @@ Verify sent (check for sent indicator) → TTS confirms
 
 | Module | Responsibility | Key Classes |
 |--------|---------------|-------------|
-| `wakeword` | Offline wake word detection via Porcupine | `WakeWordDetector`, `WakeWordService` |
+| `wakeword` | Offline phrase detection via Vosk | `WakeWordDetector`, `WakeWordService` |
 | `stt` | Speech-to-text via Vosk (streaming) | `VoskRecognizer`, `STTService` |
 | `tts` | Text-to-speech via Android TTS / Piper | `TTSManager`, `PiperEngine` |
 | `llm` | On-device LLM inference (MediaPipe/llama.cpp) | `LLMRunner`, `PromptBuilder` |
@@ -151,7 +151,7 @@ Verify sent (check for sent indicator) → TTS confirms
 
 - **Main thread**: UI only
 - **IO thread**: Room, DataStore, file I/O
-- **Wake word thread**: Audio capture + Porcupine processing (real-time priority)
+- **Wake word thread**: Audio capture + Vosk grammar decoding
 - **STT thread**: Vosk recognition (CPU intensive)
 - **LLM thread**: Model inference (can use GPU delegate)
 - **Agent thread**: Coroutine context for agent loop steps
@@ -160,8 +160,7 @@ Verify sent (check for sent indicator) → TTS confirms
 ## Model Management
 
 Models stored in `/data/data/com.nana.assistant/files/models/`:
-- `wakeword/hey_nana.ppn` (Porcupine)
-- `stt/vosk-model-small-en-us-0.15` (Vosk)
+- `stt/<selected-small-vosk-model>` (Vosk)
 - `llm/gemma-2b-it-q4_k_m.gguf` or `gemma-3-1b-it-q4_k_m.gguf` (llama.cpp/MediaPipe)
 - `tts/piper/en_US-lessac-medium.onnx` (Piper, optional)
 - `ocr/mlkit_text_recognition.tflite` (bundled in ML Kit)

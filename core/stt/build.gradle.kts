@@ -64,6 +64,7 @@ dependencies {
 
     implementation(project(":shared:common"))
     implementation(project(":shared:logging"))
+    implementation(project(":core:storage"))
     
     // Test
     testImplementation("junit:junit:${rootProject.ext.get("junit.version")}")

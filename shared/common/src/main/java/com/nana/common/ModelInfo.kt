@@ -35,15 +35,15 @@ data class ModelInfo(
 object ModelCatalog {
     val WAKE_WORD_MODELS = listOf(
         ModelInfo(
-            id = "porcupine_hey_nana",
-            name = "Hey NaNa (Porcupine)",
+            id = "vosk_selected_phrase",
+            name = "Custom wake phrase (selected Vosk model)",
             type = ModelInfo.ModelType.WAKE_WORD,
-            version = "3.0",
-            sizeBytes = 50_000,
-            ramUsageMB = 2,
-            estimatedLatencyMs = 10,
+            version = "Vosk grammar",
+            sizeBytes = 0,
+            ramUsageMB = 80,
+            estimatedLatencyMs = 300,
             deviceTier = ModelInfo.DeviceTier.LOW,
-            path = "wakeword/hey_nana.ppn"
+            path = "uses-selected-stt-model"
         )
     )
 

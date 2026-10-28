@@ -3,7 +3,7 @@ export function HowItWorks() {
     {
       number: "01",
       title: "Wake Word",
-      desc: 'Porcupine detects "Hey NaNa" offline. Foreground service holds wake lock — works with screen off.',
+      desc: 'Vosk detects your selected wake phrase offline using the compact speech model you install.',
     },
     {
       number: "02",

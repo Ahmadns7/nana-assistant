@@ -59,11 +59,12 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:${rootProject.ext.get("androidx.lifecycle.version")}")
     implementation("androidx.appcompat:appcompat:${rootProject.ext.get("androidx.appcompat.version")}")
     implementation("com.jakewharton.timber:timber:${rootProject.ext.get("timber.version")}")
-    implementation("ai.picovoice:porcupine-android:${rootProject.ext.get("porcupine.version")}")
+    implementation("com.alphacephei:vosk-android:${rootProject.ext.get("vosk.version")}")
     implementation("androidx.media3:media3-session:${rootProject.ext.get("media3.version")}")
 
     implementation(project(":shared:common"))
     implementation(project(":shared:logging"))
+    implementation(project(":core:stt"))
     
     // Test
     testImplementation("junit:junit:${rootProject.ext.get("junit.version")}")
