@@ -3,19 +3,15 @@ package com.nana.logging
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.withContext
-import java.lang.management.ManagementFactory
-import java.lang.management.MemoryMXBean
-import java.lang.management.ThreadMXBean
+import kotlinx.coroutines.launch
 
 /**
  * Performance monitoring for on-device ML inference and agent loops.
  */
 class PerformanceMonitor {
-    private val memoryBean: MemoryMXBean = ManagementFactory.getMemoryMXBean()
-    private val threadBean: ThreadMXBean = ManagementFactory.getThreadMXBean()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var sampling = false
     private val samples = mutableListOf<PerformanceSample>()
@@ -35,9 +31,9 @@ class PerformanceMonitor {
             while (sampling) {
                 val sample = PerformanceSample(
                     timestamp = System.currentTimeMillis(),
-                    heapUsedMB = memoryBean.heapMemoryUsage.used / (1024.0 * 1024.0),
-                    heapMaxMB = memoryBean.heapMemoryUsage.max / (1024.0 * 1024.0),
-                    cpuTimeMs = threadBean.currentThreadCpuTime / 1_000_000,
+                    heapUsedMB = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / (1024.0 * 1024.0),
+                    heapMaxMB = Runtime.getRuntime().maxMemory() / (1024.0 * 1024.0),
+                    cpuTimeMs = 0L,
                     activeThreads = Thread.activeCount(),
                     label = label
                 )
@@ -52,8 +48,9 @@ class PerformanceMonitor {
         return samples.toList()
     }
 
-    fun getSummary(samples: List<PerformanceSample> = samples): PerformanceSummary {
-        if (samples.isEmpty()) return PerformanceSummary(0.0, 0.0, 0.0, 0L, 0)
+    fun getSummary(input: List<PerformanceSample> = samples): PerformanceSummary {
+        val samples = input
+        if (samples.isEmpty()) return PerformanceSummary(0.0, 0.0, 0.0, 0, 0)
         val heapUsed = samples.map { it.heapUsedMB }.average()
         val heapMax = samples.map { it.heapMaxMB }.maxOrNull() ?: 0.0
         val cpuTime = samples.map { it.cpuTimeMs }.average()
@@ -73,12 +70,11 @@ class PerformanceMonitor {
         owner.lifecycle.addObserver(LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_START -> startSampling(label)
-                Lifecycle.Event.ON_STOP -> stopSampling().also { samples ->
-                    NanaLogger.logModelInference(label, 0, 0, 0, true) // log summary
+                Lifecycle.Event.ON_STOP -> stopSampling().also {
+                    NanaLogger.logModelInference(label, 0, 0, 0, true)
                 }
+                else -> Unit
             }
         })
     }
 }
-
-private class CoroutineScope(private val context: kotlinx.coroutines.CoroutineContext) : kotlinx.coroutines.CoroutineScope by context

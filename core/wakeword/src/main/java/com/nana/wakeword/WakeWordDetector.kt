@@ -2,6 +2,7 @@ package com.nana.wakeword
 
 import android.content.Context
 import com.nana.common.Constants
+import com.nana.common.getModelsDir
 import com.nana.common.Result
 import com.nana.logging.NanaLogger
 import ai.picovoice.porcupine.Porcupine
@@ -21,7 +22,7 @@ class WakeWordDetector(
 ) {
     private var porcupine: Porcupine? = null
     private var initialized = false
-    private val frameLength = 512 // Porcupine default
+    private var frameLength = 512 // Porcupine default
 
     suspend fun initialize(): Result<Unit> = withContext(Dispatchers.IO) {
         try {
@@ -92,7 +93,7 @@ class WakeWordDetector(
 
     fun getFrameLength(): Int = frameLength
 
-    fun getSampleRate(): Int = Porcupine.sampleRate
+    fun getSampleRate(): Int = porcupine?.sampleRate ?: SAMPLE_RATE
 
     fun release() {
         porcupine?.delete()

@@ -2,8 +2,6 @@ package com.nana.common
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import androidx.room.TypeConverters
-import kotlinx.datetime.LocalDateTime
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -59,35 +57,3 @@ data class ActionLog(
     }
 }
 
-@Serializable
-data class ScreenState(
-    val packageName: String,
-    val activityName: String,
-    val nodeCount: Int,
-    val textSummary: String,
-    val hash: String
-) {
-    companion object {
-        fun fromRoot(root: AccessibilityNodeInfo): ScreenState {
-            val text = root.getTextContent().take(500)
-            val hash = (root.packageName.toString() + root.className.toString() + text).hashCode().toString()
-            return ScreenState(
-                packageName = root.packageName.toString(),
-                activityName = root.className.toString(),
-                nodeCount = countNodes(root),
-                textSummary = text,
-                hash = hash
-            )
-        }
-
-        private fun countNodes(node: AccessibilityNodeInfo): Int {
-            var count = 1
-            for (i in 0 until node.childCount) {
-                val child = node.getChild(i) ?: continue
-                count += countNodes(child)
-                child.recycle()
-            }
-            return count
-        }
-    }
-}

@@ -15,7 +15,9 @@ import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import com.nana.common.Constants
+import com.nana.common.Result
 import com.nana.logging.NanaLogger
+import com.nana.core.wakeword.BuildConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -45,6 +47,7 @@ class WakeWordService : Service() {
     override fun onCreate() {
         super.onCreate()
         NanaLogger.init(BuildConfig.DEBUG)
+        detector = WakeWordDetector(this)
         createNotificationChannel()
         acquireWakeLock()
     }
@@ -64,13 +67,13 @@ class WakeWordService : Service() {
         scope.launch(Dispatchers.IO) {
             val initResult = detector.initialize()
             if (initResult.isFailure) {
-                NanaLogger.e("WakeWordService", "Detector init failed: ${initResult.getOrNull()?.error?.message}")
+                NanaLogger.e("WakeWordService", "Detector init failed: ${(initResult as? Result.Failure)?.error?.message}")
                 stopSelf()
                 return@launch
             }
 
             startAudioRecording()
-            showForegroundNotification("Listening for "Hey NaNa"...")
+            showForegroundNotification("Listening for 'Hey NaNa'...")
         }
     }
 

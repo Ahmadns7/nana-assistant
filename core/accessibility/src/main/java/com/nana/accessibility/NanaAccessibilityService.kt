@@ -9,6 +9,10 @@ import android.view.accessibility.AccessibilityNodeInfo
 import androidx.core.view.accessibility.AccessibilityNodeInfoCompat
 import com.nana.common.Constants
 import com.nana.common.ScreenState
+import com.nana.common.findAll
+import com.nana.common.findFirst
+import com.nana.common.getTextContent
+import com.nana.core.accessibility.BuildConfig
 import com.nana.logging.NanaLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -166,8 +170,8 @@ class NanaAccessibilityService : AccessibilityService() {
     private fun findNode(text: String, contentDesc: String, id: String): AccessibilityNodeInfo? {
         val root = getRootInActiveWindow() ?: return null
         return root.findFirst { node ->
-            val matchText = text.isBlank() || node.text?.toString().lowercase().contains(text.lowercase()) == true
-            val matchDesc = contentDesc.isBlank() || node.contentDescription?.toString().lowercase().contains(contentDesc.lowercase()) == true
+            val matchText = text.isBlank() || node.text?.toString()?.lowercase()?.contains(text.lowercase()) == true
+            val matchDesc = contentDesc.isBlank() || node.contentDescription?.toString()?.lowercase()?.contains(contentDesc.lowercase()) == true
             val matchId = id.isBlank() || node.viewIdResourceName?.contains(id) == true
             matchText && matchDesc && matchId
         }
@@ -178,12 +182,12 @@ class NanaAccessibilityService : AccessibilityService() {
      */
     fun findNodes(text: String = "", contentDesc: String = "", id: String = ""): List<AccessibilityNodeInfo> {
         val root = getRootInActiveWindow() ?: return emptyList()
-        return root.findAll { node ->
-            val matchText = text.isBlank() || node.text?.toString().lowercase().contains(text.lowercase()) == true
-            val matchDesc = contentDesc.isBlank() || node.contentDescription?.toString().lowercase().contains(contentDesc.lowercase()) == true
+        return root.findAll(predicate = { node ->
+            val matchText = text.isBlank() || node.text?.toString()?.lowercase()?.contains(text.lowercase()) == true
+            val matchDesc = contentDesc.isBlank() || node.contentDescription?.toString()?.lowercase()?.contains(contentDesc.lowercase()) == true
             val matchId = id.isBlank() || node.viewIdResourceName?.contains(id) == true
             matchText && matchDesc && matchId
-        }
+        })
     }
 
     /**

@@ -15,6 +15,7 @@ import com.nana.llm.PromptBuilder
 import com.nana.logging.NanaLogger
 import com.nana.media.MediaController
 import com.nana.phone.PhoneController
+import com.nana.phone.PhoneController.ActionResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -50,7 +51,7 @@ class AgentLoop(
             val fastPathResult = tryFastPath(intent)
             if (fastPathResult != null) {
                 val duration = System.currentTimeMillis() - startTime
-                logAction(intent, "fast_path", fastPathResult, duration, 0)
+                logAction(intent, "fast_path", fastPathResult.success, duration, 0)
                 NanaLogger.logSessionEnd(sessionId, duration, 1, fastPathResult.success)
                 return@withContext Result.Success(AgentResult(fastPathResult.success, fastPathResult.message))
             }
@@ -68,7 +69,7 @@ class AgentLoop(
         }
     }
 
-    private fun tryFastPath(intent: VoiceIntent): ActionResult? {
+    private suspend fun tryFastPath(intent: VoiceIntent): ActionResult? {
         return when (intent) {
             is VoiceIntent.MediaControl -> handleMediaFastPath(intent)
             is VoiceIntent.AppControl -> handleAppFastPath(intent)
@@ -78,7 +79,7 @@ class AgentLoop(
         }
     }
 
-    private fun handleMediaFastPath(intent: VoiceIntent.MediaControl): ActionResult {
+    private suspend fun handleMediaFastPath(intent: VoiceIntent.MediaControl): ActionResult {
         val action = intent.action
         val result = when (action) {
             VoiceIntent.MediaControl.MediaAction.PLAY -> mediaController.play()
@@ -102,7 +103,8 @@ class AgentLoop(
     private fun handleAppFastPath(intent: VoiceIntent.AppControl): ActionResult {
         if (intent.action == VoiceIntent.AppControl.AppAction.OPEN) {
             val packageName = resolvePackageName(intent.target)
-            return actionExecutor.execute(ActionExecutor.PlannedAction.OpenApp(packageName)).fold(
+            val result = actionExecutor.execute(ActionExecutor.PlannedAction.OpenApp(packageName))
+            return result.fold(
                 onSuccess = { ActionResult(it.success, it.description) },
                 onFailure = { ActionResult(false, "Failed to open app: ${it.message}") }
             )
@@ -110,7 +112,7 @@ class AgentLoop(
         return ActionResult(false, "App action not supported in fast path")
     }
 
-    private fun handlePhoneFastPath(intent: VoiceIntent.PhoneBasic): ActionResult {
+    private suspend fun handlePhoneFastPath(intent: VoiceIntent.PhoneBasic): ActionResult {
         val action = intent.action
         return when (action) {
             VoiceIntent.PhoneBasic.PhoneAction.TOGGLE_FLASHLIGHT -> phoneController.toggleFlashlight()
@@ -172,7 +174,7 @@ class AgentLoop(
             // Get LLM response
             val llmResult = llmRunner.generateResponse(prompt, sessionContext, tools)
             if (llmResult.isFailure) {
-                return AgentResult(false, "LLM failed: ${llmResult.getOrNull()?.error?.message}")
+                return AgentResult(false, "LLM failed: ${(llmResult as? Result.Failure)?.error?.message}")
             }
 
             val response = llmResult.getOrThrow()
@@ -181,7 +183,7 @@ class AgentLoop(
             when (response) {
                 is LLMRunner.LLMResponse.Action -> {
                     val actionResult = executeAction(response.action)
-                    logAction(intent, response.action, actionResult, 0, stepCount)
+                    logAction(intent, response.action, actionResult.success, 0, stepCount)
                     
                     if (!actionResult.success) {
                         // Try verification
@@ -264,7 +266,7 @@ class AgentLoop(
     private fun logAction(
         intent: VoiceIntent,
         action: String,
-        result: ActionExecutor.ActionResult,
+        success: Boolean,
         durationMs: Long,
         step: Int
     ) {
@@ -274,7 +276,7 @@ class AgentLoop(
             screenStateHash = lastScreenState?.hash ?: "unknown",
             actionTaken = action,
             actionParams = "",
-            result = if (result.success) ActionLog.ActionResult.SUCCESS else ActionLog.ActionResult.FAILED,
+            result = if (success) ActionLog.ActionResult.SUCCESS else ActionLog.ActionResult.FAILED,
             durationMs = durationMs,
             stepNumber = step,
             sessionId = currentSessionId

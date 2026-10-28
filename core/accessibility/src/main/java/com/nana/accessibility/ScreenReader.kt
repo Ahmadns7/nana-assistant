@@ -9,29 +9,27 @@ import com.nana.logging.NanaLogger
  */
 class ScreenReader(private val service: NanaAccessibilityService) {
 
-    fun getScreenState(): ScreenState? {
-        return service.getCurrentScreenState()
-    }
+    fun getScreenState(): ScreenState? = service.getCurrentScreenState()
 
-    fun getScreenText(): String {
-        return service.getScreenText()
-    }
+    fun getScreenText(): String = service.getScreenText()
 
     /**
      * Find clickable elements on screen.
      */
     fun findClickableElements(): List<ClickableElement> {
         val nodes = service.findNodes()
-        return nodes.mapNotNull { node ->
+        val result = nodes.mapNotNull { node ->
             if (node.isClickable || node.isFocusable || node.isLongClickable) {
                 val text = node.text?.toString() ?: ""
                 val desc = node.contentDescription?.toString() ?: ""
                 val id = node.viewIdResourceName ?: ""
                 val bounds = android.graphics.Rect()
                 node.getBoundsInScreen(bounds)
-                Some(ClickableElement(text, desc, id, bounds, node))
-            } else None
-        }.map { it.value }.also { nodes.forEach { it.recycle() } }
+                ClickableElement(text, desc, id, bounds, node)
+            } else null
+        }
+        result.forEach { if (!nodes.contains(it.node)) it.node.recycle() }
+        return result
     }
 
     /**
@@ -39,15 +37,17 @@ class ScreenReader(private val service: NanaAccessibilityService) {
      */
     fun findInputFields(): List<InputField> {
         val nodes = service.findNodes()
-        return nodes.mapNotNull { node ->
+        val result = nodes.mapNotNull { node ->
             if (node.isEditable || node.className.toString().contains("EditText")) {
                 val hint = node.contentDescription?.toString() ?: ""
                 val id = node.viewIdResourceName ?: ""
                 val bounds = android.graphics.Rect()
                 node.getBoundsInScreen(bounds)
-                Some(InputField(hint, id, bounds, node))
-            } else None
-        }.map { it.value }.also { nodes.forEach { it.recycle() } }
+                InputField(hint, id, bounds, node)
+            } else null
+        }
+        result.forEach { if (!nodes.contains(it.node)) it.node.recycle() }
+        return result
     }
 
     /**
@@ -55,23 +55,23 @@ class ScreenReader(private val service: NanaAccessibilityService) {
      */
     fun findScrollableContainers(): List<ScrollableContainer> {
         val nodes = service.findNodes()
-        return nodes.mapNotNull { node ->
+        val result = nodes.mapNotNull { node ->
             if (node.isScrollable) {
                 val id = node.viewIdResourceName ?: ""
                 val className = node.className.toString()
                 val bounds = android.graphics.Rect()
                 node.getBoundsInScreen(bounds)
-                Some(ScrollableContainer(id, className, bounds, node))
-            } else None
-        }.map { it.value }.also { nodes.forEach { it.recycle() } }
+                ScrollableContainer(id, className, bounds, node)
+            } else null
+        }
+        result.forEach { if (!nodes.contains(it.node)) it.node.recycle() }
+        return result
     }
 
     /**
      * Search for text on screen.
      */
-    fun findText(query: String): List<AccessibilityNodeInfo> {
-        return service.findNodes(text = query)
-    }
+    fun findText(query: String): List<AccessibilityNodeInfo> = service.findNodes(text = query)
 
     /**
      * Get structured summary of screen for LLM.
@@ -80,19 +80,15 @@ class ScreenReader(private val service: NanaAccessibilityService) {
         val state = getScreenState() ?: return "No screen data"
         val clickables = findClickableElements().take(20)
         val inputs = findInputFields().take(10)
-        
+
         val summary = StringBuilder()
-        summary.append("App: ${state.packageName}/${state.activityName}
-")
-        summary.append("Text: ${state.textSummary.take(maxLength)}
-")
+        summary.append("App: ${state.packageName}/${state.activityName}\n")
+        summary.append("Text: ${state.textSummary.take(maxLength)}\n")
         if (clickables.isNotEmpty()) {
-            summary.append("Clickable: ${clickables.joinToString(", ") { it.description }}
-")
+            summary.append("Clickable: ${clickables.joinToString(", ") { it.description }}\n")
         }
         if (inputs.isNotEmpty()) {
-            summary.append("Inputs: ${inputs.joinToString(", ") { it.hint }}
-")
+            summary.append("Inputs: ${inputs.joinToString(", ") { it.hint }}\n")
         }
         return summary.toString()
     }

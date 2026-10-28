@@ -15,7 +15,9 @@ import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import com.nana.common.Constants
+import com.nana.common.Result
 import com.nana.logging.NanaLogger
+import com.nana.core.stt.BuildConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -95,7 +97,7 @@ class STTService : Service() {
         scope.launch(Dispatchers.IO) {
             val initResult = recognizer.initialize()
             if (initResult.isFailure) {
-                NanaLogger.e("STTService", "Recognizer init failed: ${initResult.getOrNull()?.error?.message}")
+                NanaLogger.e("STTService", "Recognizer init failed: ${(initResult as? Result.Failure)?.error?.message}")
                 stopSelf()
                 return@launch
             }
@@ -139,10 +141,10 @@ class STTService : Service() {
                 if (hasSpeech) {
                     speechStarted = true
                     silenceFrames = 0
-                    recognizer.acceptWaveform(buffer)
+                    recognizer.acceptWaveForm(buffer)
                 } else if (speechStarted) {
                     silenceFrames++
-                    recognizer.acceptWaveform(buffer)
+                    recognizer.acceptWaveForm(buffer)
                     if (silenceFrames >= maxSilenceFrames) {
                         // End of speech detected
                         val finalResult = recognizer.getFinalResult()

@@ -1,25 +1,21 @@
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
-    id("kotlin-parcelize")
     id("org.jetbrains.kotlin.plugin.serialization")
+    id("org.jetbrains.kotlin.kapt")
 }
 
 android {
     namespace = "com.nana.core.storage"
-    compileSdk = rootProject.ext.get("android.compileSdk") as Int
+    compileSdk = rootProject.ext.get("android.compileSdk").toString().toInt()
     defaultConfig {
-        minSdk = rootProject.ext.get("android.minSdk") as Int
-        targetSdk = rootProject.ext.get("android.targetSdk") as Int
-        versionCode = 1
-        versionName = "1.0.0"
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        minSdk = rootProject.ext.get("android.minSdk").toString().toInt()
+        targetSdk = rootProject.ext.get("android.targetSdk").toString().toInt()
         consumerProguardFiles("consumer-rules.pro")
     }
     buildTypes {
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
+            isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -27,7 +23,6 @@ android {
         }
         debug {
             isMinifyEnabled = false
-            isDebuggable = true
         }
     }
     compileOptions {
@@ -43,9 +38,8 @@ android {
         )
     }
     buildFeatures {
-        compose = true
-        viewBinding = true
-        dataBinding = true
+        compose = false
+        buildConfig = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = rootProject.ext.get("compose.compiler.version") as String
@@ -61,6 +55,12 @@ android {
 }
 
 dependencies {
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:${rootProject.ext.get("kotlinx.coroutines.version")}")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:${rootProject.ext.get("kotlinx.serialization.json")}")
+    implementation("androidx.core:core-ktx:${rootProject.ext.get("androidx.core.version")}")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:${rootProject.ext.get("androidx.lifecycle.version")}")
+    implementation("androidx.appcompat:appcompat:${rootProject.ext.get("androidx.appcompat.version")}")
+    implementation("com.jakewharton.timber:timber:${rootProject.ext.get("timber.version")}")
     implementation("androidx.room:room-runtime:${rootProject.ext.get("androidx.room.version")}")
     implementation("androidx.room:room-ktx:${rootProject.ext.get("androidx.room.version")}")
     kapt("androidx.room:room-compiler:${rootProject.ext.get("androidx.room.version")}")

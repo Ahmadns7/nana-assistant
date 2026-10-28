@@ -13,6 +13,7 @@ import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import com.nana.common.Constants
 import com.nana.logging.NanaLogger
+import com.nana.core.agent.BuildConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

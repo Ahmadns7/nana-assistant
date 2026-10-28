@@ -1,6 +1,8 @@
 package com.nana.notifications
 
+import android.app.RemoteInput
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
@@ -8,6 +10,7 @@ import androidx.core.app.NotificationCompat
 import com.nana.common.Result
 import com.nana.common.SessionContext
 import com.nana.logging.NanaLogger
+import com.nana.core.notifications.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -65,17 +68,10 @@ class NotificationListener : NotificationListenerService() {
     }
 
     /**
-     * Get all active notifications.
-     */
-    fun getActiveNotifications(): Array<StatusBarNotification> {
-        return getActiveNotifications()
-    }
-
-    /**
      * Read notifications aloud (for voice triage).
      */
     suspend fun readNotificationsAloud(filterPackage: String? = null): Result<List<NotificationSummary>> = withContext(Dispatchers.IO) {
-        val notifications = getActiveNotifications()
+        val notifications = super.getActiveNotifications()
             .filter { filterPackage == null || it.packageName == filterPackage }
             .map { sbn ->
                 val text = getNotificationText(sbn)
@@ -96,36 +92,30 @@ class NotificationListener : NotificationListenerService() {
      * Reply to a notification (if it has RemoteInput).
      */
     suspend fun replyToNotification(key: String, replyText: String): Result<Unit> = withContext(Dispatchers.IO) {
-        val sbn = getActiveNotifications().firstOrNull { it.key == key }
+        val sbn = super.getActiveNotifications().firstOrNull { it.key == key }
         if (sbn == null) return@withContext Result.Failure(Result.Error("NOT_FOUND", "Notification not found"))
 
         val notification = sbn.notification
-        val remoteInputs = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            notification.remoteInputs
-        } else null
+        val action = notification.actions?.firstOrNull {
+            it.remoteInputs?.isNotEmpty() == true
+        }
 
-        if (remoteInputs == null || remoteInputs.isEmpty()) {
+        if (action == null) {
             return@withContext Result.Failure(Result.Error("NO_REMOTE_INPUT", "Notification doesn't support inline reply"))
         }
 
-        val remoteInput = remoteInputs[0]
+        val remoteInputs = action.remoteInputs ?: emptyArray()
         val results = android.os.Bundle().apply {
-            putCharSequence(remoteInput.resultKey, replyText)
+            putCharSequence(remoteInputs[0].resultKey, replyText)
         }
 
-        val pendingIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            notification.remoteInputResultsIntent
-        } else null
-
-        if (pendingIntent != null) {
-            try {
-                pendingIntent.send(context = this, code = 0, intent = Intent().putExtras(results))
-                Result.Success(Unit)
-            } catch (e: Exception) {
-                Result.Failure(Result.Error("REPLY_FAILED", "Failed to send reply", e))
-            }
-        } else {
-            Result.Failure(Result.Error("NO_PENDING_INTENT", "No reply intent available"))
+        try {
+            val intent = Intent().putExtras(results)
+            RemoteInput.addResultsToIntent(remoteInputs, intent, results)
+            action.actionIntent.send(this@NotificationListener, 0, intent)
+            Result.Success(Unit)
+        } catch (e: Exception) {
+            Result.Failure(Result.Error("REPLY_FAILED", "Failed to send reply", e))
         }
     }
 

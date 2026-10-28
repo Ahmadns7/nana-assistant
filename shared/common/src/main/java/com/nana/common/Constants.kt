@@ -29,7 +29,7 @@ object Constants {
     const val AGENT_VERIFICATION_RETRIES = 2
 
     // Accessibility
-    const val A11Y_EVENT_TYPES = intArrayOf(
+    val A11Y_EVENT_TYPES = intArrayOf(
         android.view.accessibility.AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED,
         android.view.accessibility.AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED,
         android.view.accessibility.AccessibilityEvent.TYPE_VIEW_CLICKED,

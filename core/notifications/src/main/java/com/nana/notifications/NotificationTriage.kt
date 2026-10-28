@@ -26,13 +26,11 @@ class NotificationTriage(
                 summary.append("${notifications.size} notification${if (notifications.size > 1) "s" else ""}")
                 
                 notifications.take(5).forEachIndexed { index, n ->
-                    summary.append("
-${index + 1}. ${n.title}: ${n.text.take(100)}")
+                    summary.append("\n${index + 1}. ${n.title}: ${n.text.take(100)}")
                 }
                 
                 if (notifications.size > 5) {
-                    summary.append("
-... and ${notifications.size - 5} more")
+                    summary.append("\n... and ${notifications.size - 5} more")
                 }
                 
                 Result.Success(summary.toString())
@@ -42,17 +40,15 @@ ${index + 1}. ${n.title}: ${n.text.take(100)}")
 
     suspend fun replyToLast(message: String): Result<Unit> = withContext(Dispatchers.IO) {
         val result = notificationListener.readNotificationsAloud(null)
-        return@withContext result.flatMap { notifications ->
-            if (notifications.isEmpty()) {
-                Result.Failure(Result.Error("NO_NOTIFICATIONS", "No notifications to reply to"))
-            } else {
-                // Find the most recent one with reply action
-                val repliable = notifications.find { n ->
-                    // Check if notification supports reply
-                    true // Simplified
-                } ?: notifications.first()
-                
-                notificationListener.replyToNotification(repliable.key, message)
+        return@withContext when (result) {
+            is Result.Failure -> result
+            is Result.Success -> {
+                val notifications = result.value
+                if (notifications.isEmpty()) {
+                    Result.Failure(Result.Error("NO_NOTIFICATIONS", "No notifications to reply to"))
+                } else {
+                    notificationListener.replyToNotification(notifications.first().key, message)
+                }
             }
         }
     }

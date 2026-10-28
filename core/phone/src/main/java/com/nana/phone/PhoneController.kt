@@ -148,7 +148,7 @@ class PhoneController(private val context: Context) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 val isDnd = notificationManager.currentInterruptionFilter == android.app.NotificationManager.INTERRUPTION_FILTER_NONE
                 val mode = if (isDnd) android.app.NotificationManager.INTERRUPTION_FILTER_ALL else android.app.NotificationManager.INTERRUPTION_FILTER_NONE
-                notificationManager.currentInterruptionFilter = mode
+                notificationManager.setInterruptionFilter(mode)
                 ActionResult(true, if (isDnd) "Do Not Disturb off" else "Do Not Disturb on")
             } else {
                 ActionResult(false, "DND toggle requires Android 6+")
@@ -180,9 +180,6 @@ class PhoneController(private val context: Context) {
         val level = batteryManager.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY)
         val status = batteryManager.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_STATUS)
         val charging = status == android.os.BatteryManager.BATTERY_STATUS_CHARGING || status == android.os.BatteryManager.BATTERY_STATUS_FULL
-        val health = batteryManager.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_HEALTH)
-        val temp = batteryManager.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_TEMPERATURE) / 10.0
-        
         val statusStr = when (status) {
             android.os.BatteryManager.BATTERY_STATUS_CHARGING -> "charging"
             android.os.BatteryManager.BATTERY_STATUS_DISCHARGING -> "discharging"
@@ -191,17 +188,13 @@ class PhoneController(private val context: Context) {
             else -> "unknown"
         }
         
-        return ActionResult(true, "Battery: $level% $statusStr${if (charging) " ⚡" else ""}, ${temp}°C")
+        return ActionResult(true, "Battery: $level% $statusStr${if (charging) " ⚡" else ""}")
     }
 
     // Storage info
     fun getStorageInfo(): ActionResult {
-        val storageManager = context.getSystemService(Context.STORAGE_SERVICE) as android.os.storage.StorageManager
-        val uuid = storageManager.getPrimaryStorageUuid()
-        val volume = storageManager.getStorageVolume(uuid)
-        
         return try {
-            val file = volume?.directoryFile ?: context.filesDir
+            val file = context.filesDir
             val total = file.totalSpace
             val free = file.freeSpace
             val used = total - free

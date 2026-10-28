@@ -1,8 +1,10 @@
 package com.nana.llm
 
 import android.content.Context
+import com.nana.common.ModelCatalog
 import com.nana.common.ModelInfo
 import com.nana.common.Result
+import com.nana.common.getModelsDir
 import com.nana.logging.NanaLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -15,7 +17,7 @@ class ModelManager(private val context: Context) {
     private var currentModel: ModelInfo? = null
 
     suspend fun getAvailableModels(): Result<List<ModelInfo>> = withContext(Dispatchers.IO) {
-        val models = ModelInfo.ModelCatalog.LLM_MODELS.map { info ->
+        val models = ModelCatalog.LLM_MODELS.map { info ->
             val modelFile = File(context.getModelsDir(), info.path)
             info.copy(downloaded = modelFile.exists(), active = currentModel?.id == info.id)
         }
@@ -23,7 +25,7 @@ class ModelManager(private val context: Context) {
     }
 
     suspend fun setActiveModel(modelId: String): Result<ModelInfo> = withContext(Dispatchers.IO) {
-        val models = ModelInfo.ModelCatalog.LLM_MODELS
+        val models = ModelCatalog.LLM_MODELS
         val model = models.find { it.id == modelId } ?: return@withContext Result.Failure(Result.Error("NOT_FOUND", "Model $modelId not found"))
         
         val modelFile = File(context.getModelsDir(), model.path)
@@ -62,9 +64,9 @@ class ModelManager(private val context: Context) {
 
     fun getRecommendedModel(): ModelInfo {
         val tier = getDeviceTier()
-        return ModelInfo.ModelCatalog.LLM_MODELS
+        return ModelCatalog.LLM_MODELS
             .filter { it.isCompatibleWith(tier) }
             .maxByOrNull { it.ramUsageMB } 
-            ?: ModelInfo.ModelCatalog.LLM_MODELS.first()
+            ?: ModelCatalog.LLM_MODELS.first()
     }
 }

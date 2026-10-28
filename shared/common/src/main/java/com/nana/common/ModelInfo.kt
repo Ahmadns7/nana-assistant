@@ -87,7 +87,7 @@ object ModelCatalog {
         ModelInfo(
             id = "gemma_3_1b_q4",
             name = "Gemma 3 1B IT (Q4_K_M)",
-            type = ModelInfo.ModelType.LLLM,
+            type = ModelInfo.ModelType.LLM,
             version = "3-1B",
             sizeBytes = 800_000_000,
             ramUsageMB = 1000,

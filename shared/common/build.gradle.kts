@@ -1,25 +1,20 @@
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
-    id("kotlin-parcelize")
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
 android {
     namespace = "com.nana.shared.common"
-    compileSdk = rootProject.ext.get("android.compileSdk") as Int
+    compileSdk = rootProject.ext.get("android.compileSdk").toString().toInt()
     defaultConfig {
-        minSdk = rootProject.ext.get("android.minSdk") as Int
-        targetSdk = rootProject.ext.get("android.targetSdk") as Int
-        versionCode = 1
-        versionName = "1.0.0"
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        minSdk = rootProject.ext.get("android.minSdk").toString().toInt()
+        targetSdk = rootProject.ext.get("android.targetSdk").toString().toInt()
         consumerProguardFiles("consumer-rules.pro")
     }
     buildTypes {
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
+            isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -27,7 +22,6 @@ android {
         }
         debug {
             isMinifyEnabled = false
-            isDebuggable = true
         }
     }
     compileOptions {
@@ -43,9 +37,7 @@ android {
         )
     }
     buildFeatures {
-        compose = true
-        viewBinding = true
-        dataBinding = true
+        compose = false
     }
     composeOptions {
         kotlinCompilerExtensionVersion = rootProject.ext.get("compose.compiler.version") as String
@@ -61,9 +53,12 @@ android {
 }
 
 dependencies {
-    implementation(project(":shared:common"))
-    implementation(project(":shared:logging"))
-    
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:${rootProject.ext.get("kotlinx.coroutines.version")}")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:${rootProject.ext.get("kotlinx.serialization.json")}")
+    implementation("androidx.core:core-ktx:${rootProject.ext.get("androidx.core.version")}")
+    implementation("androidx.room:room-runtime:${rootProject.ext.get("androidx.room.version")}")
+    implementation("androidx.room:room-ktx:${rootProject.ext.get("androidx.room.version")}")
+
     // Test
     testImplementation("junit:junit:${rootProject.ext.get("junit.version")}")
     testImplementation("org.junit.jupiter:junit-jupiter:${rootProject.ext.get("junit.jupiter.version")}")

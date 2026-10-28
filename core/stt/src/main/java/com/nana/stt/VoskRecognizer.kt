@@ -4,9 +4,11 @@ import android.content.Context
 import com.nana.common.Constants
 import com.nana.common.Result
 import com.nana.logging.NanaLogger
-import com.alphacephei.vosk.Model
-import com.alphacephei.vosk.Recognizer
-import com.alphacephei.vosk.Vosk
+import com.nana.common.getModelsDir
+import org.vosk.LibVosk
+import org.vosk.LogLevel
+import org.vosk.Model
+import org.vosk.Recognizer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -35,7 +37,7 @@ class VoskRecognizer(
 
     suspend fun initialize(): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            Vosk.setLogLevel(0) // Disable Vosk internal logs
+            LibVosk.setLogLevel(LogLevel.WARNINGS) // Disable Vosk internal logs
 
             val modelFile = resolveModelPath()
             if (!File(modelFile).exists()) {
@@ -108,9 +110,9 @@ class VoskRecognizer(
      * Feed audio data to the recognizer.
      * @param pcm Short array of PCM audio at sampleRate
      */
-    fun acceptWaveform(pcm: ShortArray): Boolean {
+    fun acceptWaveForm(pcm: ShortArray): Boolean {
         if (!initialized || recognizer == null) return false
-        return recognizer!!.acceptWaveform(pcm, pcm.size)
+        return recognizer!!.acceptWaveForm(pcm, pcm.size)
     }
 
     fun getPartialResult(): String {

@@ -13,7 +13,9 @@ import android.os.Handler
 import android.view.Surface
 import com.nana.common.Result
 import com.nana.logging.NanaLogger
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
@@ -48,7 +50,7 @@ class ScreenOCR(
         imageReader?.setOnImageAvailableListener({ reader ->
             reader.acquireLatestImage()?.let { image ->
                 // Process image async
-                kotlinx.coroutines.Dispatchers.IO.asCoroutineDispatcher().launch {
+                CoroutineScope(Dispatchers.IO).launch {
                     recognizeScreen(image)
                 }
             }

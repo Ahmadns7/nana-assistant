@@ -12,6 +12,7 @@ import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import com.nana.common.Result
 import com.nana.logging.NanaLogger
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 
 /**
@@ -49,7 +50,7 @@ class OCREngine(private val context: Context) {
                 OCRBlock(
                     text = block.text,
                     boundingBox = block.boundingBox,
-                    cornerPoints = block.cornerPoints?.map { it.toPair() } ?: emptyList(),
+                    cornerPoints = block.cornerPoints?.map { it.x to it.y } ?: emptyList(),
                     recognizedLanguage = block.recognizedLanguage
                 )
             }
@@ -77,7 +78,7 @@ class OCREngine(private val context: Context) {
                 OCRBlock(
                     text = block.text,
                     boundingBox = block.boundingBox,
-                    cornerPoints = block.cornerPoints?.map { it.toPair() } ?: emptyList(),
+                    cornerPoints = block.cornerPoints?.map { it.x to it.y } ?: emptyList(),
                     recognizedLanguage = block.recognizedLanguage
                 )
             }
@@ -102,7 +103,7 @@ class OCREngine(private val context: Context) {
                 OCRBlock(
                     text = block.text,
                     boundingBox = block.boundingBox,
-                    cornerPoints = block.cornerPoints?.map { it.toPair() } ?: emptyList(),
+                    cornerPoints = block.cornerPoints?.map { it.x to it.y } ?: emptyList(),
                     recognizedLanguage = block.recognizedLanguage
                 )
             }

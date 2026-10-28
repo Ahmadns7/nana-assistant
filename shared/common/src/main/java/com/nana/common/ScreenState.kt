@@ -12,7 +12,7 @@ data class ScreenState(
     val hash: String,
     val timestamp: Long = System.currentTimeMillis(),
     val scrollable: Boolean = false,
-    val focusedNodeText: String? = nil
+    val focusedNodeText: String? = null
 ) {
     companion object {
         fun fromRoot(root: AccessibilityNodeInfo?): ScreenState? {

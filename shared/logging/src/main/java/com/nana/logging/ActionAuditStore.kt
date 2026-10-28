@@ -24,8 +24,7 @@ class ActionAuditStore(private val context: Context) {
         try {
             ensureWriterForToday()
             currentWriter?.write(formatLogEntry(actionLog))
-            currentWriter?.write("
-")
+            currentWriter?.write("\n")
             currentWriter?.flush()
             Result.Success(Unit)
         } catch (e: Exception) {
@@ -48,8 +47,7 @@ class ActionAuditStore(private val context: Context) {
             log.timestamp,
             log.sessionId,
             log.intentCategory.name,
-            log.intent.replace("
-", " ").take(200),
+            log.intent.replace("\n", " ").take(200),
             log.screenStateHash,
             log.actionTaken,
             log.result.ordinal,
@@ -71,7 +69,7 @@ class ActionAuditStore(private val context: Context) {
 
     suspend fun getRecentLogs(days: Int = 7): Result<List<String>> = withContext(Dispatchers.IO) {
         try {
-            val files = logDir.listFiles()?.filter { it.name.startsWith("actions_") }?.sortedByDescending { it.name }?.take(days) ?: emptyArray()
+            val files = logDir.listFiles()?.filter { it.name.startsWith("actions_") }?.sortedByDescending { it.name }?.take(days) ?: emptyList()
             val allLines = mutableListOf<String>()
             for (file in files) {
                 allLines.addAll(file.readLines())

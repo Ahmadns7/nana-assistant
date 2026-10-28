@@ -2,11 +2,11 @@ package com.nana.logging
 
 import android.util.Log
 import com.nana.common.ActionLog
-import com.nana.common.Result
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import com.nana.shared.logging.BuildConfig
 
 /**
  * Centralized logging for NaNa with structured output and action audit trail.
@@ -28,7 +28,8 @@ object NanaLogger {
     private class DebugTree : Timber.Tree() {
         override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
             if (priority >= Log.DEBUG) {
-                Log.println(priority, tag ?: TAG, message, t)
+                Log.println(priority, tag ?: TAG, message)
+                t?.let { Log.println(priority, tag ?: TAG, Log.getStackTraceString(it)) }
             }
         }
     }
@@ -36,7 +37,8 @@ object NanaLogger {
     private class ReleaseTree : Timber.Tree() {
         override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
             if (priority >= Log.WARN) {
-                Log.println(priority, tag ?: TAG, message, t)
+                Log.println(priority, tag ?: TAG, message)
+                t?.let { Log.println(priority, tag ?: TAG, Log.getStackTraceString(it)) }
             }
         }
     }
@@ -58,7 +60,7 @@ object NanaLogger {
     // Action audit logging - critical for debugging agent behavior
     fun logAction(actionLog: ActionLog) {
         val tag = "ACTION_AUDIT"
-        val msg = "session=%s step=%d intent="%s" action="%s" result=%s duration=%dms error=%s".format(
+        val msg = "session=%s step=%d intent=\"%s\" action=\"%s\" result=%s duration=%dms error=%s".format(
             actionLog.sessionId,
             actionLog.stepNumber,
             actionLog.intent.take(100),
@@ -91,11 +93,11 @@ object NanaLogger {
     }
 
     fun logSTTResult(text: String, confidence: Float, latencyMs: Long) {
-        i("STT", "text="%s" confidence=%.2f latency=%dms".format(text.take(100), confidence, latencyMs))
+        i("STT", "text=\"%s\" confidence=%.2f latency=%dms".format(text.take(100), confidence, latencyMs))
     }
 
     fun logTTSStart(text: String, engine: String) {
-        d("TTS", "engine=$engine text="%s"".format(text.take(100)))
+        d("TTS", "engine=$engine text=\"%s\"".format(text.take(100)))
     }
 
     fun logAccessibilityEvent(eventType: Int, packageName: String, className: String) {

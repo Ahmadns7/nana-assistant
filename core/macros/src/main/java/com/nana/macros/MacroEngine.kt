@@ -31,8 +31,8 @@ class MacroEngine(
         for (action in macro.actions) {
             val result = executeAction(action)
             if (result.isFailure) {
-                NanaLogger.e("MacroEngine", "Macro action failed: ${action.type}", result.getOrNull()?.error?.cause)
-                return@withContext Result.Failure(Result.Error("MACRO_ACTION_FAILED", "Action ${action.type} failed: ${result.getOrNull()?.error?.message}"))
+                NanaLogger.e("MacroEngine", "Macro action failed: ${action.type}", (result as? Result.Failure)?.error?.cause)
+                return@withContext Result.Failure(Result.Error("MACRO_ACTION_FAILED", "Action ${action.type} failed: ${(result as? Result.Failure)?.error?.message}"))
             }
         }
 
@@ -40,7 +40,8 @@ class MacroEngine(
         Result.Success(Unit)
     }
 
-    private fun executeAction(action: VoiceMacro.MacroAction): Result<Unit> = when (action.type) {
+    private suspend fun executeAction(action: VoiceMacro.MacroAction): Result<Unit> {
+        return when (action.type) {
         VoiceMacro.MacroAction.ActionType.OPEN_APP -> {
             val pkg = action.params["package"] ?: return Result.Failure(Result.Error("NO_PACKAGE", "Package required"))
             val intent = context.packageManager.getLaunchIntentForPackage(pkg)
@@ -103,6 +104,7 @@ class MacroEngine(
         VoiceMacro.MacroAction.ActionType.CONDITION -> {
             // Conditional execution - simplified
             Result.Success(Unit)
+        }
         }
     }
 

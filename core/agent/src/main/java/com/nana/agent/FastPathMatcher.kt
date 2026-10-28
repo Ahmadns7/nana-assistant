@@ -92,6 +92,6 @@ object FastPathMatcher {
             return Result.Success(VoiceIntent.ScreenQuery(lower))
         }
 
-        Result.Failure(Result.Error("NO_FAST_MATCH", "No fast path match"))
+        return Result.Failure(Result.Error("NO_FAST_MATCH", "No fast path match"))
     }
 }

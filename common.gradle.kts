@@ -3,16 +3,15 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
-    id("kotlin-parcelize")
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
 android {
     namespace = "com.nana.assistant"
-    compileSdk = rootProject.ext.get("android.compileSdk") as Int
+    compileSdk = rootProject.ext.get("android.compileSdk").toString().toInt()
     defaultConfig {
-        minSdk = rootProject.ext.get("android.minSdk") as Int
-        targetSdk = rootProject.ext.get("android.targetSdk") as Int
+        minSdk = rootProject.ext.get("android.minSdk").toString().toInt()
+        targetSdk = rootProject.ext.get("android.targetSdk").toString().toInt()
         versionCode = 1
         versionName = "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

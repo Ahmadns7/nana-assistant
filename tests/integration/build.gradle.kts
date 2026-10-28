@@ -1,34 +1,27 @@
 plugins {
     id("com.android.test")
     id("org.jetbrains.kotlin.android")
-    id("kotlin-parcelize")
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
 android {
     namespace = "com.nana.tests.integration"
-    compileSdk = rootProject.ext.get("android.compileSdk") as Int
+    compileSdk = rootProject.ext.get("android.compileSdk").toString().toInt()
     defaultConfig {
-        minSdk = rootProject.ext.get("android.minSdk") as Int
-        targetSdk = rootProject.ext.get("android.targetSdk") as Int
-        versionCode = 1
-        versionName = "1.0.0"
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        minSdk = rootProject.ext.get("android.minSdk").toString().toInt()
+        targetSdk = rootProject.ext.get("android.targetSdk").toString().toInt()
         consumerProguardFiles("consumer-rules.pro")
     }
     buildTypes {
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
+            isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
         debug {
-            isMinifyEnabled = false
-            isDebuggable = true
-        }
+            isMinifyEnabled = false        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -43,10 +36,7 @@ android {
         )
     }
     buildFeatures {
-        compose = true
-        viewBinding = true
-        dataBinding = true
-    }
+        compose = false}
     composeOptions {
         kotlinCompilerExtensionVersion = rootProject.ext.get("compose.compiler.version") as String
     }

@@ -7,7 +7,7 @@ import com.nana.common.VoiceIntent
  * Builds structured prompts for the on-device LLM.
  */
 object PromptBuilder {
-    private const val FAST_PATH_PROMPT = """
+    private val FAST_PATH_PROMPT = """
 Classify the user's intent into ONE category:
 - MEDIA: play/pause/next/prev/volume/what's playing
 - APP: open/close/switch app
@@ -25,7 +25,7 @@ Classify the user's intent into ONE category:
 User: {intent}
 Category:""".trimIndent()
 
-    private const val AGENT_PROMPT = """
+    private val AGENT_PROMPT = """
 You are NaNa, controlling an Android phone via accessibility.
 Current screen: {screenSummary}
 User intent: {intent}
@@ -55,8 +55,7 @@ Rules:
         .replace("{intent}", intent)
         .replace("{screenSummary}", screenSummary)
         .replace("{entities}", entities)
-        .replace("{tools}", tools.joinToString("
-"))
+        .replace("{tools}", tools.joinToString("\n"))
 
     fun buildScreenQueryPrompt(question: String, screenText: String): String = """
 Answer the question based ONLY on the screen content below.
@@ -69,8 +68,7 @@ Question: $question
 Answer:""".trimIndent()
 
     fun buildWhatsAppPrompt(action: String, chatName: String?, lastMessages: List<String>): String {
-        val messages = lastMessages.joinToString("
-") { "  - $it" }
+        val messages = lastMessages.joinToString("\n") { "  - $it" }
         return """
 WhatsApp task: $action
 Target chat: ${chatName ?: "unknown"}

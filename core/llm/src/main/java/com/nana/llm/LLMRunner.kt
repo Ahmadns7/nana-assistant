@@ -4,10 +4,12 @@ import android.content.Context
 import com.nana.common.Constants
 import com.nana.common.ModelInfo
 import com.nana.common.Result
+import com.nana.common.getModelsDir
 import com.nana.common.SessionContext
 import com.nana.logging.NanaLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
 
 /**
  * On-device LLM inference runner.

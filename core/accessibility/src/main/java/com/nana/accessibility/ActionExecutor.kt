@@ -1,6 +1,8 @@
 package com.nana.accessibility
 
+import android.accessibilityservice.AccessibilityService
 import android.view.accessibility.AccessibilityNodeInfo
+import com.nana.common.ScreenState
 import com.nana.common.Result
 import com.nana.logging.NanaLogger
 
@@ -61,7 +63,7 @@ class ActionExecutor(private val service: NanaAccessibilityService) {
                 result
             } else false
         } else {
-            val containers = service.findScrollableContainers()
+            val containers = ScreenReader(service).findScrollableContainers()
             if (containers.isNotEmpty()) {
                 val container = containers.first()
                 val actionId = if (direction == "backward") AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD else AccessibilityNodeInfo.ACTION_SCROLL_FORWARD
@@ -157,31 +159,36 @@ class ActionExecutor(private val service: NanaAccessibilityService) {
     }
 
     sealed interface PlannedAction {
-        data class Click(val target: String) : PlannedAction {
-            val type = ActionType.CLICK
-            val params = emptyMap<String, String>()
+        val type: ActionType
+        val params: Map<String, String>
+        val target: String
+
+        data class Click(override val target: String) : PlannedAction {
+            override val type = ActionType.CLICK
+            override val params = emptyMap<String, String>()
         }
-        data class Scroll(val target: String, val direction: String = "forward") : PlannedAction {
-            val type = ActionType.SCROLL
-            val params = mapOf("direction" to direction)
+        data class Scroll(override val target: String, val direction: String = "forward") : PlannedAction {
+            override val type = ActionType.SCROLL
+            override val params = mapOf("direction" to direction)
         }
-        data class SetText(val target: String, val text: String) : PlannedAction {
-            val type = ActionType.SET_TEXT
-            val params = mapOf("text" to text)
+        data class SetText(override val target: String, val text: String) : PlannedAction {
+            override val type = ActionType.SET_TEXT
+            override val params = mapOf("text" to text)
         }
         data class Global(val action: String) : PlannedAction {
-            val type = ActionType.GLOBAL
-            val params = mapOf("action" to action)
+            override val type = ActionType.GLOBAL
+            override val params = mapOf("action" to action)
+            override val target = ""
         }
         data class Wait(val ms: Long) : PlannedAction {
-            val type = ActionType.WAIT
-            val params = mapOf("ms" to ms.toString())
-            val target = ""
+            override val type = ActionType.WAIT
+            override val params = mapOf("ms" to ms.toString())
+            override val target = ""
         }
         data class OpenApp(val packageName: String) : PlannedAction {
-            val type = ActionType.OPEN_APP
-            val params = mapOf("package" to packageName)
-            val target = packageName
+            override val type = ActionType.OPEN_APP
+            override val params = mapOf("package" to packageName)
+            override val target = packageName
         }
     }
 

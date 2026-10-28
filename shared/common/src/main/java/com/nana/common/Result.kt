@@ -34,6 +34,11 @@ sealed interface Result<out T> {
         is Failure -> this
     }
 
+    fun <R> fold(onSuccess: (T) -> R, onFailure: (Error) -> R): R = when (this) {
+        is Success -> onSuccess(value)
+        is Failure -> onFailure(error)
+    }
+
     fun onSuccess(action: (T) -> Unit): Result<T> = also { if (it is Success) action(it.value) }
     fun onFailure(action: (Error) -> Unit): Result<T> = also { if (it is Failure) action(it.error) }
 
@@ -45,7 +50,7 @@ sealed interface Result<out T> {
         is Failure -> throw RuntimeException(error.message, error.cause)
     }
 
-    fun getOrDefault(default: T): T = when (this) {
+    fun getOrDefault(default: @UnsafeVariance T): T = when (this) {
         is Success -> value
         is Failure -> default
     }

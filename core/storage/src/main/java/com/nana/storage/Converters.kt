@@ -3,6 +3,7 @@ package com.nana.storage
 import androidx.room.TypeConverter
 import com.nana.common.ActionLog
 import com.nana.common.VoiceMacro
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 class Converters {

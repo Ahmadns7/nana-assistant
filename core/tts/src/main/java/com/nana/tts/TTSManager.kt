@@ -10,6 +10,7 @@ import com.nana.logging.NanaLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
 
@@ -52,6 +53,10 @@ class TTSManager(private val context: Context) {
                         }
                         override fun onDone(utteranceId: String?) {
                             speakCallback?.invoke(true)
+                        }
+                        override fun onError(utteranceId: String?) {
+                            NanaLogger.e("TTSManager", "TTS error")
+                            speakCallback?.invoke(false)
                         }
                         override fun onError(utteranceId: String?, error: Int) {
                             NanaLogger.e("TTSManager", "TTS error: $error")

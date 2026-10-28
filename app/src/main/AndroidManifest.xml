@@ -79,7 +79,7 @@
 
         <!-- Main Activity -->
         <activity
-            android:name=".ui.main.MainActivity"
+            android:name="com.nana.ui.main.MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
             android:theme="@style/Theme.NaNa.NoActionBar">
@@ -91,27 +91,27 @@
 
         <!-- Settings Activity -->
         <activity
-            android:name=".ui.settings.SettingsActivity"
+            android:name="com.nana.ui.settings.SettingsActivity"
             android:exported="false"
             android:theme="@style/Theme.NaNa.NoActionBar" />
 
         <!-- Wake Word Foreground Service -->
         <service
-            android:name=".core.wakeword.WakeWordService"
+            android:name="com.nana.wakeword.WakeWordService"
             android:exported="false"
             android:foregroundServiceType="microphone"
             android:permission="android.permission.BIND_FOREGROUND_SERVICE" />
 
         <!-- STT Foreground Service -->
         <service
-            android:name=".core.stt.STTService"
+            android:name="com.nana.stt.STTService"
             android:exported="false"
             android:foregroundServiceType="microphone"
             android:permission="android.permission.BIND_FOREGROUND_SERVICE" />
 
         <!-- Accessibility Service -->
         <service
-            android:name=".core.accessibility.NanaAccessibilityService"
+            android:name="com.nana.accessibility.NanaAccessibilityService"
             android:exported="true"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
             android:label="@string/accessibility_service_name">
@@ -125,7 +125,7 @@
 
         <!-- Notification Listener Service -->
         <service
-            android:name=".core.notifications.NotificationListener"
+            android:name="com.nana.notifications.NotificationListener"
             android:exported="true"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
             android:label="@string/notification_listener_name">
@@ -136,7 +136,7 @@
 
         <!-- Agent Foreground Service (for long-running agent loops) -->
         <service
-            android:name=".core.agent.AgentService"
+            android:name="com.nana.agent.AgentService"
             android:exported="false"
             android:foregroundServiceType="specialUse"
             android:permission="android.permission.BIND_FOREGROUND_SERVICE" />

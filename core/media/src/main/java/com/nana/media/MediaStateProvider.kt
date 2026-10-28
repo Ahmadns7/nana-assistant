@@ -1,9 +1,11 @@
 package com.nana.media
 
+import android.content.ComponentName
 import android.content.Context
+import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
-import com.nana.common.Result
+import android.media.session.PlaybackState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
@@ -11,11 +13,18 @@ import kotlinx.coroutines.flow.asStateFlow
  * Reactive media state provider for UI.
  */
 class MediaStateProvider(private val context: Context) {
-    private val mediaSessionManager = context.getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
+    private val mediaSessionManager =
+        context.getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
     private val _nowPlaying = MutableStateFlow<NowPlayingInfo?>(null)
     val nowPlaying = _nowPlaying.asStateFlow()
 
     private var activeController: MediaController? = null
+
+    private val controllerCallback = object : MediaController.Callback() {
+        override fun onMetadataChanged(metadata: MediaMetadata?) = updateNowPlaying()
+        override fun onPlaybackStateChanged(state: PlaybackState?) = updateNowPlaying()
+        override fun onSessionDestroyed() = updateNowPlaying()
+    }
 
     fun start() {
         updateActiveSession()
@@ -27,14 +36,14 @@ class MediaStateProvider(private val context: Context) {
     }
 
     private fun updateActiveSession() {
-        val controllers = mediaSessionManager.activeSessions
-        controllers?.forEach { controller ->
-            if (controller.playbackState?.state == MediaController.PlaybackState.STATE_PLAYING) {
-                setController(controller)
-                return
-            }
+        val controllers = try {
+            mediaSessionManager.getActiveSessions(null as ComponentName?)
+        } catch (e: Exception) {
+            emptyList()
         }
-        controllers?.firstOrNull()?.let { setController(it) }
+        controllers.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING }
+            ?.let { setController(it); return }
+        controllers.firstOrNull()?.let { setController(it) }
     }
 
     private fun setController(controller: MediaController) {
@@ -44,27 +53,18 @@ class MediaStateProvider(private val context: Context) {
         updateNowPlaying()
     }
 
-    private val controllerCallback = object : MediaController.Callback() {
-        override fun onMetadataChanged(metadata: MediaController.Metadata?) {
-            updateNowPlaying()
-        }
-        override fun onPlaybackStateChanged(state: android.media.session.PlaybackState?) {
-            updateNowPlaying()
-        }
-    }
-
     private fun updateNowPlaying() {
         val metadata = activeController?.metadata
         val state = activeController?.playbackState
         _nowPlaying.value = if (metadata != null) {
             NowPlayingInfo(
-                title = metadata.description.title?.toString() ?: "Unknown",
-                artist = metadata.description.subtitle?.toString() ?: "Unknown",
-                album = metadata.description.description?.toString(),
-                artworkUri = metadata.description.iconUri,
+                title = metadata.getString(MediaMetadata.METADATA_KEY_TITLE) ?: "Unknown",
+                artist = metadata.getString(MediaMetadata.METADATA_KEY_ARTIST) ?: "Unknown",
+                album = metadata.getString(MediaMetadata.METADATA_KEY_ALBUM),
+                artworkUri = metadata.getString(MediaMetadata.METADATA_KEY_ART_URI)?.let(android.net.Uri::parse),
                 packageName = activeController?.packageName,
-                isPlaying = state?.state == android.media.session.PlaybackState.STATE_PLAYING,
-                duration = metadata.duration,
+                isPlaying = state?.state == PlaybackState.STATE_PLAYING,
+                duration = metadata.getLong(MediaMetadata.METADATA_KEY_DURATION),
                 position = state?.position ?: 0
             )
         } else null

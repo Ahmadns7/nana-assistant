@@ -1,23 +1,23 @@
 package com.nana.storage
 
 import android.content.Context
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.PreferencesKeys
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.preferencesKey
-import androidx.datastore.preferences.rx.preferenceDataStore
+import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
 import com.nana.common.Result
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.tasks.await
-import io.reactivex.rxjava3.core.Single
+
+private val Context.nanaSettingsDataStore by preferencesDataStore(name = "nana_settings")
 
 /**
  * DataStore for user settings.
  */
 class SettingsStore(private val context: Context) {
-    private val dataStore = context.preferencesDataStore("nana_settings")
+    private val dataStore = context.nanaSettingsDataStore
 
-    // Keys
     private val WAKE_WORD_ENABLED = booleanPreferencesKey("wake_word_enabled")
     private val WAKE_WORD_SENSITIVITY = floatPreferencesKey("wake_word_sensitivity")
     private val TTS_ENGINE = stringPreferencesKey("tts_engine")
@@ -34,7 +34,7 @@ class SettingsStore(private val context: Context) {
         .first()
 
     suspend fun setWakeWordEnabled(enabled: Boolean): Result<Unit> = try {
-        dataStore.edit { it[WAKE_WORD_ENABLED] = enabled }.await()
+        dataStore.edit { it[WAKE_WORD_ENABLED] = enabled }
         Result.Success(Unit)
     } catch (e: Exception) {
         Result.Failure(Result.Error("STORE_FAILED", "Failed to save setting", e))
@@ -45,7 +45,7 @@ class SettingsStore(private val context: Context) {
         .first()
 
     suspend fun setWakeWordSensitivity(sensitivity: Float): Result<Unit> = try {
-        dataStore.edit { it[WAKE_WORD_SENSITIVITY] = sensitivity }.await()
+        dataStore.edit { it[WAKE_WORD_SENSITIVITY] = sensitivity }
         Result.Success(Unit)
     } catch (e: Exception) {
         Result.Failure(Result.Error("STORE_FAILED", "Failed to save setting", e))
@@ -56,7 +56,7 @@ class SettingsStore(private val context: Context) {
         .first()
 
     suspend fun setTTSEngine(engine: String): Result<Unit> = try {
-        dataStore.edit { it[TTS_ENGINE] = engine }.await()
+        dataStore.edit { it[TTS_ENGINE] = engine }
         Result.Success(Unit)
     } catch (e: Exception) {
         Result.Failure(Result.Error("STORE_FAILED", "Failed to save setting", e))
@@ -67,7 +67,7 @@ class SettingsStore(private val context: Context) {
         .first()
 
     suspend fun setTTSRate(rate: Float): Result<Unit> = try {
-        dataStore.edit { it[TTS_RATE] = rate }.await()
+        dataStore.edit { it[TTS_RATE] = rate }
         Result.Success(Unit)
     } catch (e: Exception) {
         Result.Failure(Result.Error("STORE_FAILED", "Failed to save setting", e))
@@ -78,7 +78,7 @@ class SettingsStore(private val context: Context) {
         .first()
 
     suspend fun setLLMModel(model: String): Result<Unit> = try {
-        dataStore.edit { it[LLM_MODEL] = model }.await()
+        dataStore.edit { it[LLM_MODEL] = model }
         Result.Success(Unit)
     } catch (e: Exception) {
         Result.Failure(Result.Error("STORE_FAILED", "Failed to save setting", e))
@@ -89,7 +89,7 @@ class SettingsStore(private val context: Context) {
         .first()
 
     suspend fun setBatteryAwareMode(enabled: Boolean): Result<Unit> = try {
-        dataStore.edit { it[BATTERY_AWARE_MODE] = enabled }.await()
+        dataStore.edit { it[BATTERY_AWARE_MODE] = enabled }
         Result.Success(Unit)
     } catch (e: Exception) {
         Result.Failure(Result.Error("STORE_FAILED", "Failed to save setting", e))
@@ -100,7 +100,7 @@ class SettingsStore(private val context: Context) {
         .first()
 
     suspend fun setAccessibilityVerbose(enabled: Boolean): Result<Unit> = try {
-        dataStore.edit { it[ACCESSIBILITY_VERBOSE] = enabled }.await()
+        dataStore.edit { it[ACCESSIBILITY_VERBOSE] = enabled }
         Result.Success(Unit)
     } catch (e: Exception) {
         Result.Failure(Result.Error("STORE_FAILED", "Failed to save setting", e))
@@ -111,7 +111,7 @@ class SettingsStore(private val context: Context) {
         .first()
 
     suspend fun setLanguage(language: String): Result<Unit> = try {
-        dataStore.edit { it[LANGUAGE] = language }.await()
+        dataStore.edit { it[LANGUAGE] = language }
         Result.Success(Unit)
     } catch (e: Exception) {
         Result.Failure(Result.Error("STORE_FAILED", "Failed to save setting", e))
@@ -122,7 +122,7 @@ class SettingsStore(private val context: Context) {
         .first()
 
     suspend fun setConfirmActions(enabled: Boolean): Result<Unit> = try {
-        dataStore.edit { it[CONFIRM_ACTIONS] = enabled }.await()
+        dataStore.edit { it[CONFIRM_ACTIONS] = enabled }
         Result.Success(Unit)
     } catch (e: Exception) {
         Result.Failure(Result.Error("STORE_FAILED", "Failed to save setting", e))

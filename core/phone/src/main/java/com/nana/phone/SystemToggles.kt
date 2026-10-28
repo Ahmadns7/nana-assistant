@@ -54,11 +54,11 @@ object SystemToggles {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             try {
                 val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
-                notificationManager.currentInterruptionFilter = if (enabled) {
+                notificationManager.setInterruptionFilter(if (enabled) {
                     android.app.NotificationManager.INTERRUPTION_FILTER_NONE
                 } else {
                     android.app.NotificationManager.INTERRUPTION_FILTER_ALL
-                }
+                })
                 Result.Success(Unit)
             } catch (e: Exception) {
                 Result.Failure(Result.Error("DND_TOGGLE_FAILED", "Failed to toggle DND", e))
