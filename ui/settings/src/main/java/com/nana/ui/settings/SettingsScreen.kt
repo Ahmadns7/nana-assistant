@@ -3,6 +3,8 @@ package com.nana.ui.settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -20,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nana.ui.settings.viewmodel.SettingsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -38,7 +41,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
         SettingsSection("Wake Word") {
             SettingRow(
                 title = "Enable Wake Word",
-                subtitle = "Listen for "Hey NaNa"",
+                subtitle = "Listen for \"Hey NaNa\"",
                 trailing = { Switch(checked = settings.wakeWordEnabled, onCheckedChange = { viewModel.setWakeWordEnabled(it) }) }
             )
             SettingRow(
@@ -121,7 +124,7 @@ fun SettingsSection(title: String, content: @Composable () -> Unit) {
             Text(text = title, fontSize = 18.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
             content()
         }
-    )
+    }
 }
 
 @Composable

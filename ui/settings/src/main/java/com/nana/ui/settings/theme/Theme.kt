@@ -32,7 +32,7 @@ fun NaNaSettingsTheme(
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = androidx.compose.material3.Typography,
+        typography = androidx.compose.material3.Typography(),
         content = content
     )
 }

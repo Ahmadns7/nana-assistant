@@ -4,6 +4,8 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
+group = "com.nana.ui.settings"
+
 android {
     namespace = "com.nana.ui.settings"
     compileSdk = rootProject.ext.get("android.compileSdk").toString().toInt()
@@ -64,6 +66,8 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:${rootProject.ext.get("androidx.lifecycle.version")}")
     implementation("javax.inject:javax.inject:1")
     implementation(project(":core:storage"))
+    implementation(project(":core:settings"))
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:${rootProject.ext.get("androidx.lifecycle.version")}")
     implementation("androidx.preference:preference-ktx:1.2.1")
 
     implementation(project(":shared:common"))
