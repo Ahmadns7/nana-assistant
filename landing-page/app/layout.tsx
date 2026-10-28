@@ -5,8 +5,8 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 
 export const metadata: Metadata = {
-  title: 'NaNa Assistant - Offline Voice AI for Android',
-  description: 'Control your phone entirely by voice. No internet required. Wake word, media control, messaging, screen reading, and more — all on-device.',
+  title: 'NaNa — Your phone, in your words.',
+  description: 'A private, offline voice layer for Android. Tell NaNa what you need and keep your attention where it belongs.',
   openGraph: {
     title: 'NaNa Assistant',
     description: 'Fully offline voice-controlled AI phone assistant for Android',
