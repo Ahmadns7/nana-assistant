@@ -1,108 +1,51 @@
-import Link from 'next/link'
-import { Features } from '@/components/Features'
-import { HowItWorks } from '@/components/HowItWorks'
-import { Download } from '@/components/Download'
-import { TechStack } from '@/components/TechStack'
+'use client'
+
+import { useState } from 'react'
+
+const capabilities = [
+  ['01', 'Voice, not taps', 'Wake NaNa from anywhere on your phone and speak naturally.'],
+  ['02', 'Private by design', 'No cloud calls, no tracking, no accounts. Your commands stay yours.'],
+  ['03', 'Actions that finish', 'From a message to a macro, NaNa turns intent into a verified action.'],
+]
+
+const commands = ['What\'s playing?', 'Read my notifications', 'Good night']
 
 export default function Home() {
+  const [activeCommand, setActiveCommand] = useState(commands[0])
+  const [isListening, setIsListening] = useState(false)
+
   return (
-    <main className="min-h-screen">
-      {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-primary-50 to-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-32">
-          <div className="text-center max-w-3xl mx-auto">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary-50 text-primary-700 text-sm font-medium mb-6">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary-500"></span>
-              </span>
-              Fully Offline · No Internet · Privacy First
-            </div>
-            <h1 className="text-4xl sm:text-6xl font-bold tracking-tight text-gray-900 mb-6">
-              Control Your Phone{' '}
-              <span className="text-primary-600">Entirely by Voice</span>
-            </h1>
-            <p className="text-lg sm:text-xl text-gray-600 mb-10 max-w-2xl mx-auto">
-              NaNa is a fully offline voice assistant for Android. Wake word, media control,
-              messaging, screen reading, app navigation — all on-device, zero cloud calls.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-              <Link href="#download" className="btn-primary w-full sm:w-auto">
-                <svg className="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                Download APK
-              </Link>
-              <Link href="https://github.com" target="_blank" rel="noopener noreferrer" className="btn-secondary w-full sm:w-auto">
-                <svg className="mr-2 h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd" />
-                </svg>
-                View Source
-              </Link>
-            </div>
-            <div className="flex items-center justify-center gap-8 text-sm text-gray-500">
-              <div className="flex items-center gap-1">
-                <svg className="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>Zero Network Permission</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <svg className="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>On-Device LLM</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <svg className="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>Action Audit Log</span>
-              </div>
-            </div>
-          </div>
+    <main className="site-shell">
+      <nav className="nav-wrap">
+        <a className="brand" href="#top" aria-label="NaNa home"><span className="brand-mark">N</span> NaNa</a>
+        <div className="nav-links"><a href="#experience">Experience</a><a href="#privacy">Privacy</a><a href="#download">Download</a></div>
+        <a className="nav-cta" href="#download">Get NaNa <span>↗</span></a>
+      </nav>
+
+      <section className="hero" id="top">
+        <div className="hero-copy">
+          <p className="eyebrow"><span className="eyebrow-dot" /> Offline intelligence for everyday life</p>
+          <h1>Your phone.<br /><em>In your words.</em></h1>
+          <p className="hero-lede">NaNa is a calm, private voice layer for Android. Tell it what you need. It understands the screen, takes the action, and gets out of the way.</p>
+          <div className="hero-actions"><a className="button button-primary" href="#download">Download for Android <span>↗</span></a><a className="text-link" href="#experience">Explore the experience <span>↓</span></a></div>
         </div>
-        {/* Phone mockup */}
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 hidden lg:block">
-          <div className="relative w-72 h-[150px] bg-gray-900 rounded-[40px] p-2 shadow-2xl">
-            <div className="w-full h-full bg-gray-800 rounded-[38px] flex flex-col items-center justify-center p-4">
-              <div className="w-full max-w-xs space-y-3">
-                <div className="bg-primary-600/20 rounded-xl p-4 text-center">
-                  <p className="text-primary-400 font-mono text-sm">"Hey NaNa, what's playing?"</p>
-                </div>
-                <div className="bg-green-600/20 rounded-xl p-4 text-center">
-                  <p className="text-green-400 font-mono text-sm">"Now playing: Blinding Lights by The Weeknd from Spotify"</p>
-                </div>
-              </div>
-            </div>
+        <div className="hero-visual" aria-label="Interactive visualization of NaNa voice assistant">
+          <div className="orbit orbit-one" /><div className="orbit orbit-two" />
+          <div className="orbital-core" onClick={() => setIsListening(!isListening)} role="button" tabIndex={0} aria-label={isListening ? 'Stop listening' : 'Start listening'}>
+            <div className="core-glow" /><div className="core-face"><span className="core-symbol">{isListening ? '•••' : 'N'}</span><span className="core-label">{isListening ? 'Listening' : 'NaNa'}</span></div>
           </div>
+          <div className="signal signal-top">{isListening ? 'Listening for your voice' : 'Tap to talk'}</div><div className="signal signal-bottom">100% on-device</div>
         </div>
+        <div className="scroll-cue"><span>Scroll to explore</span><i /></div>
       </section>
 
-      {/* Features */}
-      <Features />
+      <section className="command-strip" id="experience"><p className="eyebrow">A more human interface</p><div className="command-row"><h2>Say less.<br /><em>Do more.</em></h2><div className="command-demo"><div className="command-tabs">{commands.map((command) => <button key={command} className={activeCommand === command ? 'active' : ''} onClick={() => setActiveCommand(command)}>{command}</button>)}</div><div className="command-result"><span className="play-dot" /><div><small>NaNa understood</small><strong>{activeCommand}</strong></div><span className="result-arrow">↗</span></div></div></div></section>
 
-      {/* How It Works */}
-      <HowItWorks />
+      <section className="capabilities" id="privacy"><div className="section-heading"><p className="eyebrow">The NaNa principle</p><h2>Quietly capable.<br /><em>Radically private.</em></h2></div><div className="capability-list">{capabilities.map(([number, title, copy]) => <article className="capability" key={number}><span className="cap-number">{number}</span><div><h3>{title}</h3><p>{copy}</p></div><span className="cap-arrow">↗</span></article>)}</div></section>
 
-      {/* Tech Stack */}
-      <TechStack />
+      <section className="download-section" id="download"><div><p className="eyebrow">A new way to use Android</p><h2>Meet the assistant<br /><em>that listens.</em></h2></div><div className="download-side"><p>Open source. Offline first. Built for the moments when your hands are busy and your attention matters.</p><a className="button button-light" href="#top">Download APK <span>↗</span></a></div></section>
 
-      {/* Download */}
-      <Download />
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-gray-400 py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <p className="mb-4">NaNa Assistant — Built for privacy, designed for voice.</p>
-          <div className="flex items-center justify-center gap-6 text-sm">
-            <Link href="https://github.com" target="_blank" rel="noopener noreferrer" className="hover:text-white">GitHub</Link>
-            <Link href="#download" className="hover:text-white">Releases</Link>
-            <Link href="https://github.com/issues" target="_blank" rel="noopener noreferrer" className="hover:text-white">Issues</Link>
-            <span>MIT License</span>
-          </div>
-        </div>
-      </footer>
+      <footer><a className="brand" href="#top"><span className="brand-mark">N</span> NaNa</a><span>Built for privacy, designed for voice.</span><span>© 2026 NaNa</span></footer>
     </main>
   )
 }
