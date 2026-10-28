@@ -2,6 +2,8 @@ package com.nana.wakeword
 
 import android.content.Context
 import android.content.Intent
+import android.Manifest
+import android.content.pm.PackageManager
 import com.nana.common.Result
 import com.nana.logging.NanaLogger
 import kotlinx.coroutines.CoroutineScope
@@ -18,15 +20,27 @@ class WakeWordManager(private val context: Context) {
     suspend fun start(): Result<Unit> = kotlinx.coroutines.withContext(Dispatchers.IO) {
         if (serviceStarted) return@withContext Result.Success(Unit)
 
-        val intent = Intent(context, WakeWordService::class.java).setAction(WakeWordService.ACTION_START)
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            context.startForegroundService(intent)
-        } else {
-            context.startService(intent)
+        if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            return@withContext Result.Failure(Result.Error.permissionDenied("microphone"))
         }
-        serviceStarted = true
-        NanaLogger.i("WakeWordManager", "Wake word service started")
-        Result.Success(Unit)
+
+        val intent = Intent(context, WakeWordService::class.java).setAction(WakeWordService.ACTION_START)
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
+            serviceStarted = true
+            NanaLogger.i("WakeWordManager", "Wake word service started")
+            Result.Success(Unit)
+        } catch (e: SecurityException) {
+            NanaLogger.e("WakeWordManager", "Wake word service permission denied", e)
+            Result.Failure(Result.Error.permissionDenied("microphone"))
+        } catch (e: IllegalStateException) {
+            NanaLogger.e("WakeWordManager", "Wake word service could not be started", e)
+            Result.Failure(Result.Error("SERVICE_START_FAILED", "Wake word service could not be started", e))
+        }
     }
 
     suspend fun stop(): Result<Unit> = kotlinx.coroutines.withContext(Dispatchers.IO) {

@@ -93,7 +93,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
         SettingsSection("About") {
             SettingRow(
                 title = "Version",
-                subtitle = "1.0.0",
+                subtitle = "1.0.1",
                 trailing = {}
             )
             SettingRow(

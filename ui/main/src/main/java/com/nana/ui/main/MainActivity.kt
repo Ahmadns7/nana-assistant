@@ -1,7 +1,10 @@
 package com.nana.ui.main
 
 import android.content.Intent
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -14,6 +17,12 @@ import com.nana.ui.main.viewmodel.MainViewModel
 import com.nana.wakeword.WakeWordManager
 
 class MainActivity : ComponentActivity() {
+    private val permissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) {
+        viewModel.onPermissionsResult()
+    }
+
     private val viewModel: MainViewModel by viewModels {
         object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
@@ -32,15 +41,22 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             NaNaTheme {
-                MainScreen(viewModel = viewModel)
+                MainScreen(viewModel = viewModel, onRequestPermissions = ::requestAppPermissions)
             }
         }
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 1001) {
-            viewModel.onPermissionsResult(grantResults)
+    private fun requestAppPermissions() {
+        val permissions = arrayOf(
+            Manifest.permission.RECORD_AUDIO,
+            Manifest.permission.CALL_PHONE,
+            Manifest.permission.SEND_SMS
+        ).filter { checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
+
+        if (permissions.isEmpty()) {
+            viewModel.openAccessibilitySettings()
+        } else {
+            permissionLauncher.launch(permissions.toTypedArray())
         }
     }
 

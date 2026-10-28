@@ -22,6 +22,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlin.math.max
 
 /**
  * Foreground service for continuous wake word detection.
@@ -30,7 +31,10 @@ import kotlinx.coroutines.launch
 class WakeWordService : Service() {
     private lateinit var detector: WakeWordDetector
     private var audioRecord: AudioRecord? = null
-    private var recording = false
+    @Volatile private var recording = false
+    @Volatile private var starting = false
+    private var startupJob: Job? = null
+    private var audioJob: Job? = null
     private val scope = CoroutineScope(Dispatchers.Default + Job())
     private var wakeLock: PowerManager.WakeLock? = null
     private var detectionCallback: ((String) -> Unit)? = null
@@ -55,45 +59,89 @@ class WakeWordService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val action = intent?.action
         when (action) {
-            ACTION_START -> startDetection()
-            ACTION_STOP -> stopDetection()
+            ACTION_START -> {
+                try {
+                    // Promote before loading Porcupine or touching the microphone. Android
+                    // requires a started foreground service to promote promptly.
+                    showForegroundNotification("Starting wake word detection...")
+                    startDetection()
+                } catch (e: SecurityException) {
+                    NanaLogger.e("WakeWordService", "Microphone permission is required", e)
+                    stopSelf(startId)
+                } catch (e: Exception) {
+                    NanaLogger.e("WakeWordService", "Could not start foreground service", e)
+                    stopSelf(startId)
+                }
+            }
+            ACTION_STOP -> {
+                stopDetection()
+                stopSelf(startId)
+            }
         }
         return START_STICKY
     }
 
     private fun startDetection() {
-        if (recording) return
+        if (recording || starting) return
+        starting = true
 
-        scope.launch(Dispatchers.IO) {
-            val initResult = detector.initialize()
-            if (initResult.isFailure) {
-                NanaLogger.e("WakeWordService", "Detector init failed: ${(initResult as? Result.Failure)?.error?.message}")
+        startupJob = scope.launch(Dispatchers.IO) {
+            try {
+                val initResult = detector.initialize()
+                if (initResult.isFailure) {
+                    NanaLogger.e("WakeWordService", "Detector init failed: ${(initResult as? Result.Failure)?.error?.message}")
+                    stopSelf()
+                    return@launch
+                }
+
+                startAudioRecording()
+                updateNotification("Listening for 'Hey NaNa'...")
+            } catch (e: SecurityException) {
+                NanaLogger.e("WakeWordService", "Microphone permission is required", e)
                 stopSelf()
-                return@launch
+            } catch (e: Exception) {
+                NanaLogger.e("WakeWordService", "Could not start audio recording", e)
+                stopSelf()
+            } finally {
+                starting = false
             }
-
-            startAudioRecording()
-            showForegroundNotification("Listening for 'Hey NaNa'...")
         }
     }
 
     private fun startAudioRecording() {
-        val bufferSize = AudioRecord.getMinBufferSize(
+        val minimumBufferSize = AudioRecord.getMinBufferSize(
             WakeWordDetector.SAMPLE_RATE,
             AudioFormat.CHANNEL_IN_MONO,
             WakeWordDetector.ENCODING
-        ) * 4
+        )
+        if (minimumBufferSize <= 0) {
+            throw IllegalStateException("This device does not support the wake word audio format")
+        }
 
-        audioRecord = AudioRecord(
+        val bufferSize = max(minimumBufferSize * 4, detector.getFrameLength() * 2)
+        val recorder = AudioRecord(
             MediaRecorder.AudioSource.VOICE_RECOGNITION,
             WakeWordDetector.SAMPLE_RATE,
             AudioFormat.CHANNEL_IN_MONO,
             WakeWordDetector.ENCODING,
             bufferSize
-        ).also {
-            it.startRecording()
+        )
+        if (recorder.state != AudioRecord.STATE_INITIALIZED) {
+            recorder.release()
+            throw IllegalStateException("Audio recorder could not be initialized")
+        }
+
+        try {
+            recorder.startRecording()
+            if (recorder.recordingState != AudioRecord.RECORDSTATE_RECORDING) {
+                throw IllegalStateException("Audio recorder did not enter recording state")
+            }
+            audioRecord = recorder
             recording = true
-            processAudioLoop()
+            audioJob = scope.launch(Dispatchers.IO) { processAudioLoop() }
+        } catch (e: Exception) {
+            recorder.release()
+            throw e
         }
     }
 
@@ -101,8 +149,9 @@ class WakeWordService : Service() {
         val frameLength = detector.getFrameLength()
         val buffer = ShortArray(frameLength)
 
-        while (recording && audioRecord != null) {
-            val read = audioRecord!!.read(buffer, 0, frameLength)
+        while (recording) {
+            val recorder = audioRecord ?: break
+            val read = recorder.read(buffer, 0, frameLength)
             if (read == frameLength) {
                 val keywordIndex = detector.process(buffer)
                 if (keywordIndex >= 0) {
@@ -133,8 +182,13 @@ class WakeWordService : Service() {
 
     private fun stopDetection() {
         recording = false
-        audioRecord?.stop()
-        audioRecord?.release()
+        starting = false
+        startupJob?.cancel()
+        startupJob = null
+        audioJob?.cancel()
+        audioJob = null
+        runCatching { audioRecord?.stop() }
+        runCatching { audioRecord?.release() }
         audioRecord = null
         hideForegroundNotification()
     }
@@ -199,6 +253,7 @@ class WakeWordService : Service() {
 
     override fun onDestroy() {
         stopDetection()
+        detector.release()
         wakeLock?.release()
         wakeLock = null
         scope.coroutineContext[Job]?.cancel()

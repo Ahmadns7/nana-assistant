@@ -32,7 +32,7 @@ import com.nana.ui.main.theme.NaNaIcons
 import com.nana.ui.main.viewmodel.MainViewModel
 
 @Composable
-fun MainScreen(viewModel: MainViewModel) {
+fun MainScreen(viewModel: MainViewModel, onRequestPermissions: () -> Unit) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     Column(
@@ -131,7 +131,7 @@ fun MainScreen(viewModel: MainViewModel) {
                         Text("\u2022 $perm", color = MaterialTheme.colorScheme.onErrorContainer)
                     }
                     Spacer(modifier = Modifier.height(8.dp))
-                    Button(onClick = { viewModel.requestPermissions() }) {
+                    Button(onClick = onRequestPermissions) {
                         Text("Grant Permissions")
                     }
                 }

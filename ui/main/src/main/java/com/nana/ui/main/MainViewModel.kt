@@ -71,20 +71,35 @@ class MainViewModel(
     }
 
     private fun startWakeWord() {
+        if (getApplication<Application>().checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            _uiState.value = _uiState.value.copy(
+                statusText = "Allow microphone access to enable wake word detection."
+            )
+            return
+        }
+
         viewModelScope.launch {
-            wakeWordManager.start().onSuccess {
-                wakeWordManager.setDetectionCallback {
+            wakeWordManager.start()
+                .onSuccess {
+                    wakeWordManager.setDetectionCallback {
+                        _uiState.value = _uiState.value.copy(
+                            isListening = true,
+                            statusText = "Wake word detected! Listening for command..."
+                        )
+                    }
+                }
+                .onFailure { error ->
                     _uiState.value = _uiState.value.copy(
-                        isListening = true,
-                        statusText = "Wake word detected! Listening for command..."
+                        isListening = false,
+                        statusText = error.message
                     )
                 }
-            }
         }
     }
 
-    fun onPermissionsResult(grantResults: IntArray) {
+    fun onPermissionsResult() {
         checkPermissions()
+        startWakeWord()
     }
 
     fun checkAccessibilityEnabled() {
@@ -99,24 +114,7 @@ class MainViewModel(
         checkServices()
     }
 
-    fun requestPermissions() {
-        val permissions = mutableListOf<String>()
-        if (getApplication<Application>().checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            permissions.add(Manifest.permission.RECORD_AUDIO)
-        }
-        if (getApplication<Application>().checkSelfPermission(Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
-            permissions.add(Manifest.permission.CALL_PHONE)
-        }
-        if (getApplication<Application>().checkSelfPermission(Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
-            permissions.add(Manifest.permission.SEND_SMS)
-        }
-
-        if (permissions.isNotEmpty()) {
-            (getApplication<Application>() as? androidx.activity.ComponentActivity)?.requestPermissions(
-                permissions.toTypedArray(), 1001
-            )
-        }
-
+    fun openAccessibilitySettings() {
         val a11yIntent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
         getApplication<Application>().startActivity(a11yIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
