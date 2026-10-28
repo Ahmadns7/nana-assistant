@@ -2,38 +2,29 @@
 
 **An offline-first, voice-enabled phone assistant for Android.**
 
-NaNa recognizes speech and a user-selected wake phrase on-device after you download a compact Vosk model. Model archives are downloaded only when you choose a model, through Android DownloadManager, and installed in app storage. Speech recognition and wake detection then work offline. This build does not include an active on-device LLM inference engine.
+NaNa runs speech recognition locally after you download a model. Vosk provides low-footprint command recognition and custom wake phrases; optional Whisper tiny checkpoints provide foreground voice command transcription. Model files are user-managed in Settings. Android Download Manager handles Wi-Fi-only model downloads, and inference stays on-device. This build does not include active generative chat or unrestricted phone control.
 
 ## Features
 
-### Core Capabilities
-- **Hands-free activation**: Wake word ("Hey NaNa") + tap-to-talk; works with screen off
-- **Media control**: Play/pause/next/previous/volume; "What's playing?" answers from real MediaSession metadata
-- **App control**: Open any installed app by name (fuzzy match); navigate inside apps
-- **Screen understanding**: Read active screen via accessibility tree; answer "what does this say?" or "read my last message"
-- **Multi-step agent loop**: Observe → Plan → Act → Verify → Repeat with step limit and "stuck" detection
-- **WhatsApp messaging**: Open app, find contact, read messages, dictate reply, confirm before send
-- **Phone basics**: Calls, SMS, alarms, timers, flashlight, Wi-Fi/Bluetooth/brightness toggles, DND, battery/storage status, calendar, contacts
+### Available now
+- **Voice command transcription** with Vosk small models or optional Whisper tiny English/multilingual models.
+- **Wake phrase** detection with a user-selected Vosk model and an editable phrase. Wake detection is off by default and requires microphone access.
+- **Model manager** to download, select, cancel, and remove Vosk and Whisper models.
+- **Voice shortcuts** for opening installed apps, flashlight, media play/pause/next/previous, volume, battery and storage status, and timers.
+- **Android settings handoff** for Wi-Fi, Bluetooth, Do Not Disturb, and display controls that Android restricts.
+- **Safe handoff for calls and messages**: NaNa opens the dialer or messaging app so the user can review and confirm there.
+- **One-tap phone tools** and an installed-app picker on the home screen.
 
-### Additional Features
-- **Custom voice macros**: "Good night" = DND + alarm + brightness down
-- **Screen summarizer**: "What's on my screen?" with copy/translate (offline ML Kit)
-- **Offline OCR**: For images and unreadable UI nodes
-- **Notification reader & voice triage**: "Read notifications", "Reply to last one"
-- **Context memory**: "Send it to him" after reading a chat
-- **Accessibility mode**: Verbose spoken feedback, large visual captions
-- **Clipboard, notes, reminders**: By voice; offline calculations
-- **Per-app permission allowlist & action history log**: User-reviewable
-- **Multilingual**: English + additional languages via swappable STT/TTS models
-- **Battery-aware mode**: Lowers wake-word/model activity when battery is low
+### Models and device requirements
+- Vosk small models cover English (US/India), Hindi, Spanish, French, and German and use roughly 36–45 MB each.
+- Whisper tiny and tiny.en are about 75 MiB each. Whisper is optional and requires a 64-bit ARM processor in this build. Its working memory is much larger than its download size, so Vosk is the better choice on entry-level phones. Wake phrase detection always uses Vosk.
+- Model files are stored privately and can be selected or removed in Settings. Downloads are explicitly started by the user and routed through Android Download Manager over Wi-Fi.
 
-### Safety & Privacy
-- **Offline processing** — speech recognition and wake detection run on-device; Android DownloadManager handles only model downloads explicitly started by the user
-- **Confirm before irreversible actions**: Sending messages, calls, deleting, payments
-- **Banking/payment screens blocked** — refused with explanation
-- **Visible indicator & kill switch** when listening or controlling screen
-- **Clear failure handling**: "I couldn't find that chat" > wrong action
-- **Action audit log**: Every action logged with screen state for debugging
+### Boundaries and privacy
+- Speech recognition and wake phrase matching run on the device. The app does not send audio to a speech service.
+- The app requests internet permission because Android Download Manager requires it for model downloads; NaNa does not use it for recognition or command processing.
+- Android controls access to the microphone, accessibility service, notifications, calls, and system settings. Some device controls open Android's own panel for the user to complete.
+- NaNa currently uses a fixed set of local command rules. It does not yet provide generative Gemma/Phi chat, arbitrary natural-language automation, or unrestricted control of every phone feature.
 
 ## Architecture
 

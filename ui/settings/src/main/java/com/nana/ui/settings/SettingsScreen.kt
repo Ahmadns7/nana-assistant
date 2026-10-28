@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nana.ui.settings.viewmodel.SettingsViewModel
+import com.nana.stt.WhisperModelCatalog
 
 private val Ink = Color(0xFF172633)
 private val Muted = Color(0xFF687781)
@@ -63,6 +64,8 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val feedback by viewModel.feedback.collectAsStateWithLifecycle()
     val speechModels by viewModel.availableSpeechModels.collectAsStateWithLifecycle()
+    val whisperModels by viewModel.availableWhisperModels.collectAsStateWithLifecycle()
+    val commandBackend by viewModel.commandBackend.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val openSystemSettings: (String) -> Unit = { action ->
         runCatching { context.startActivity(Intent(action)) }
@@ -172,9 +175,15 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                                         Text("${state.model.sizeLabel} · ${if (state.model.active) "Selected" else if (state.model.downloaded) "Ready offline" else "Download via Android"}", fontSize = 11.sp, color = Muted)
                                     }
                                     when {
-                                        state.queued -> Text("${state.model.progress ?: 0}%", fontSize = 12.sp, color = Muted)
-                                        state.model.active -> Text("Active", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Ink)
-                                        state.model.downloaded -> TextButton(onClick = { viewModel.selectSpeechModel(state.model.id) }) { Text("Use model") }
+                                        state.queued -> TextButton(onClick = { viewModel.cancelSpeechDownload(state.model.id) }) { Text("Cancel") }
+                                        state.model.active -> Column(horizontalAlignment = Alignment.End) {
+                                            Text("Wake word model", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Ink)
+                                            TextButton(onClick = { viewModel.removeSpeechModel(state.model.id) }) { Text("Remove") }
+                                        }
+                                        state.model.downloaded -> Row(verticalAlignment = Alignment.CenterVertically) {
+                                            TextButton(onClick = { viewModel.selectSpeechModel(state.model.id) }) { Text("Use") }
+                                            TextButton(onClick = { viewModel.removeSpeechModel(state.model.id) }) { Text("Remove") }
+                                        }
                                         else -> TextButton(onClick = { viewModel.downloadSpeechModel(state.model.id) }) { Text("Download") }
                                     }
                                 }
@@ -182,8 +191,47 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                             }
                         }
                     }
-                    Text("Downloads are user-started, Wi-Fi only, and managed by Android Download Manager. Model recognition stays offline.", fontSize = 11.sp, color = Muted)
-                    Text("These compact models enable offline speech input and wake phrases. Conversational Gemma/Phi generation is not available in this build yet.", fontSize = 12.sp, color = Muted)
+                    Text("Vosk runs speech recognition and custom wake phrases locally. Downloads use Android Download Manager over Wi-Fi; select or remove saved models here.", fontSize = 11.sp, color = Muted)
+                    Text("Whisper is optional for foreground voice commands. The tiny models need more memory and may be slower on entry-level phones; wake-word detection remains on Vosk.", fontSize = 12.sp, color = Muted)
+                    Text("Tap-to-talk engine", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Ink)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(onClick = viewModel::selectVoskForCommands) { Text(if (commandBackend == WhisperModelCatalog.BACKEND_VOSK) "✓ Vosk active" else "Use Vosk") }
+                        if (commandBackend == WhisperModelCatalog.BACKEND_WHISPER) {
+                            TextButton(onClick = viewModel::selectVoskForCommands) { Text("Switch to Vosk") }
+                        }
+                    }
+                    Text("Whisper tiny speech models", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Ink)
+                    whisperModels.forEach { state ->
+                        Card(
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = if (state.model.active) Mint.copy(alpha = 0.35f) else Canvas)
+                        ) {
+                            Column(Modifier.fillMaxWidth().padding(13.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    Column(Modifier.weight(1f).padding(end = 5.dp)) {
+                                        Text(state.model.name, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Ink)
+                                        Text("${state.model.sizeLabel} · ${if (state.model.active) "Active for tap-to-talk" else if (state.model.downloaded) "Saved offline" else "Whisper.cpp"}", fontSize = 11.sp, color = Muted)
+                                    }
+                                    when {
+                                        state.queued -> TextButton(onClick = { viewModel.cancelWhisperDownload(state.model.id) }) { Text("Cancel") }
+                                        state.model.downloaded -> Row(verticalAlignment = Alignment.CenterVertically) {
+                                            if (!state.model.active) TextButton(onClick = { viewModel.selectWhisperModel(state.model.id) }) { Text("Use") }
+                                            else Text("Active", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Ink)
+                                            TextButton(onClick = { viewModel.removeWhisperModel(state.model.id) }) { Text("Remove") }
+                                        }
+                                        else -> TextButton(onClick = { viewModel.downloadWhisperModel(state.model.id) }, enabled = WhisperModelCatalog.isWhisperSupported()) { Text("Download") }
+                                    }
+                                }
+                                if (state.queued) LinearProgressIndicator(progress = { (state.model.progress ?: 0) / 100f }, modifier = Modifier.fillMaxWidth())
+                            }
+                        }
+                    }
+                    Text(
+                        if (WhisperModelCatalog.isWhisperSupported()) "Downloads are user-started and Wi-Fi only. Whisper files are checksum-verified, stored privately, and used on-device." else "Whisper inference requires a 64-bit ARM app process; Vosk remains available on this device.",
+                        fontSize = 11.sp,
+                        color = Muted
+                    )
+                    Text("Speech models convert audio to text. This build uses local command rules for phone actions; a conversational Gemma/Phi model is not active yet.", fontSize = 12.sp, color = Muted)
                     ToggleRow(
                         title = "Battery-aware mode",
                         subtitle = "Reduce background activity when power is low",
@@ -230,7 +278,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
             item {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     Spacer(Modifier.size(8.dp).background(Mint, CircleShape))
-                    Text("  NaNa Assistant  ·  Version 1.0.3", fontSize = 12.sp, color = Muted)
+                    Text("  NaNa Assistant  ·  Version 1.0.4", fontSize = 12.sp, color = Muted)
                 }
             }
         }

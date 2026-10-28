@@ -12,6 +12,7 @@ import com.nana.ui.settings.theme.NaNaSettingsTheme
 import com.nana.ui.settings.viewmodel.SettingsViewModel
 import com.nana.wakeword.WakeWordManager
 import com.nana.stt.SttModelDownloadManager
+import com.nana.stt.WhisperModelManager
 
 class SettingsActivity : ComponentActivity() {
     private val viewModel: SettingsViewModel by viewModels {
@@ -22,7 +23,8 @@ class SettingsActivity : ComponentActivity() {
                     applicationContext,
                     SettingsRepository(SettingsStore(applicationContext)),
                     WakeWordManager(applicationContext),
-                    SttModelDownloadManager(applicationContext)
+                    SttModelDownloadManager(applicationContext),
+                    WhisperModelManager(applicationContext)
                 ) as T
             }
         }

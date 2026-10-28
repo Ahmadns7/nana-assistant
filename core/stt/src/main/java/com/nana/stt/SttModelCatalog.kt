@@ -141,6 +141,24 @@ class SttModelDownloadManager(private val context: Context) {
         return Result.Success(Unit)
     }
 
+    fun cancel(modelId: String) {
+        val id = prefs.getLong(downloadKey(modelId), -1L)
+        if (id >= 0) manager.remove(id)
+        File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "nana-$modelId.zip").delete()
+        prefs.edit().remove(downloadKey(modelId)).apply()
+    }
+
+    fun remove(modelId: String): Result<Unit> {
+        val model = SttModelCatalog.models.firstOrNull { it.id == modelId }
+            ?: return Result.Failure(Result.Error("MODEL_NOT_FOUND", "Speech model is not available."))
+        cancel(modelId)
+        SttModelCatalog.modelDirectory(context, modelId)?.deleteRecursively()
+        if (SttModelCatalog.activeId(context) == modelId) {
+            prefs.edit().remove(SttModelCatalog.ACTIVE_MODEL).apply()
+        }
+        return Result.Success(Unit)
+    }
+
     private fun installDownloaded(model: OfflineSpeechModel, downloadId: Long) {
         val archive = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "nana-${model.id}.zip")
         val destination = SttModelCatalog.modelDirectory(context, model.id)

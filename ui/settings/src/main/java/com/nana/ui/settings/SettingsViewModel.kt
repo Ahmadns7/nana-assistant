@@ -8,16 +8,21 @@ import com.nana.settings.SettingsRepository
 import com.nana.wakeword.WakeWordManager
 import com.nana.stt.SttModelDownloadManager
 import com.nana.stt.SttModelCatalog
+import com.nana.stt.WhisperModelManager
+import com.nana.stt.WhisperModelCatalog
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class SettingsViewModel(
     private val context: Context,
     private val settingsRepository: SettingsRepository,
     private val wakeWordManager: WakeWordManager,
-    private val speechModels: SttModelDownloadManager
+    private val speechModels: SttModelDownloadManager,
+    private val whisperModels: WhisperModelManager
 ) : ViewModel() {
 
     private val _settings = MutableStateFlow(
@@ -42,12 +47,17 @@ class SettingsViewModel(
 
     private val _speechModels = MutableStateFlow(speechModels.models())
     val availableSpeechModels = _speechModels.asStateFlow()
+    private val _whisperModels = MutableStateFlow(whisperModels.models())
+    val availableWhisperModels = _whisperModels.asStateFlow()
+    private val _commandBackend = MutableStateFlow(WhisperModelCatalog.backend(context))
+    val commandBackend = _commandBackend.asStateFlow()
     private var downloadWatchJob: Job? = null
 
     init {
         viewModelScope.launch {
             _settings.value = settingsRepository.getAllSettings()
             refreshSpeechModels()
+            refreshWhisperModels()
             watchDownloads()
         }
     }
@@ -109,6 +119,89 @@ class SettingsViewModel(
         }
     }
 
+    fun cancelSpeechDownload(modelId: String) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { speechModels.cancel(modelId) }
+            refreshSpeechModelsAndWatch()
+        }
+    }
+
+    fun removeSpeechModel(modelId: String) {
+        viewModelScope.launch {
+            val wasActive = SttModelCatalog.activeId(context) == modelId
+            if (wasActive) {
+                wakeWordManager.stop()
+                settingsRepository.setWakeWordEnabled(false)
+                _settings.value = _settings.value.copy(wakeWordEnabled = false)
+            }
+            when (val result = withContext(Dispatchers.IO) { speechModels.remove(modelId) }) {
+                is Result.Success -> _feedback.value = if (wasActive) "Model removed. Wake word is paused; select another model to use it again." else "Model removed from this phone."
+                is Result.Failure -> _feedback.value = result.error.message
+            }
+            refreshSpeechModels()
+            watchDownloads()
+        }
+    }
+
+    fun downloadWhisperModel(modelId: String) {
+        viewModelScope.launch {
+            _feedback.value = when (val result = whisperModels.enqueue(modelId)) {
+                is Result.Success -> "Whisper model download queued in Android Download Manager (Wi-Fi only)."
+                is Result.Failure -> result.error.message
+            }
+            refreshWhisperModels()
+            watchDownloads()
+        }
+    }
+
+    fun cancelWhisperDownload(modelId: String) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { whisperModels.remove(modelId) }
+            refreshSpeechModelsAndWatch()
+        }
+    }
+
+    fun selectWhisperModel(modelId: String) {
+        when (val result = whisperModels.select(modelId)) {
+            is Result.Success -> {
+                _commandBackend.value = WhisperModelCatalog.BACKEND_WHISPER
+                _feedback.value = "Whisper selected for voice commands. Wake-word detection continues to use Vosk."
+            }
+            is Result.Failure -> _feedback.value = result.error.message
+        }
+        refreshSpeechModelsAndWatch()
+    }
+
+    fun selectVoskForCommands() {
+        whisperModels.useVosk()
+        _commandBackend.value = WhisperModelCatalog.BACKEND_VOSK
+        _feedback.value = "Vosk selected for responsive offline commands and wake phrases."
+        refreshSpeechModelsAndWatch()
+    }
+
+    fun removeWhisperModel(modelId: String) {
+        viewModelScope.launch {
+            when (val result = withContext(Dispatchers.IO) { whisperModels.remove(modelId) }) {
+                is Result.Success -> {
+                    _commandBackend.value = WhisperModelCatalog.backend(context)
+                    _feedback.value = "Whisper model removed. Vosk is selected for commands."
+                }
+                is Result.Failure -> _feedback.value = result.error.message
+            }
+            refreshSpeechModels()
+            refreshWhisperModels()
+            watchDownloads()
+        }
+    }
+
+    private fun refreshSpeechModelsAndWatch() {
+        viewModelScope.launch {
+            refreshSpeechModels()
+            refreshWhisperModels()
+            watchDownloads()
+        }
+    }
+
     fun selectSpeechModel(modelId: String) {
         viewModelScope.launch {
             when (val result = speechModels.setActive(modelId)) {
@@ -136,12 +229,24 @@ class SettingsViewModel(
         }
     }
 
+    private suspend fun refreshWhisperModels() {
+        when (val result = whisperModels.refresh()) {
+            is Result.Success -> _whisperModels.value = result.value
+            is Result.Failure -> {
+                _whisperModels.value = whisperModels.models()
+                _feedback.value = result.error.message
+            }
+        }
+        _commandBackend.value = WhisperModelCatalog.backend(context)
+    }
+
     private fun watchDownloads() {
         if (downloadWatchJob?.isActive == true) return
         downloadWatchJob = viewModelScope.launch {
-            while (_speechModels.value.any { it.queued }) {
+            while (_speechModels.value.any { it.queued } || _whisperModels.value.any { it.queued }) {
                 kotlinx.coroutines.delay(1500)
                 refreshSpeechModels()
+                refreshWhisperModels()
             }
         }
     }

@@ -60,6 +60,7 @@ dependencies {
     implementation("androidx.appcompat:appcompat:${rootProject.ext.get("androidx.appcompat.version")}")
     implementation("com.jakewharton.timber:timber:${rootProject.ext.get("timber.version")}")
     implementation("com.alphacephei:vosk-android:${rootProject.ext.get("vosk.version")}")
+    implementation("dev.ffmpegkit-maintained:whisper-android:1.0.0")
     implementation("androidx.media3:media3-session:${rootProject.ext.get("media3.version")}")
 
     implementation(project(":shared:common"))

@@ -15,8 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -27,6 +25,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -168,11 +167,13 @@ fun MainScreen(viewModel: MainViewModel, onRequestPermissions: () -> Unit, onOpe
             onDismissRequest = viewModel::dismissAppPicker,
             title = { Text("All apps", color = Ink, fontWeight = FontWeight.SemiBold) },
             text = {
-                if (state.installedApps.isEmpty()) {
+                if (state.loadingApps) {
+                    CircularProgressIndicator(modifier = Modifier.padding(16.dp))
+                } else if (state.installedApps.isEmpty()) {
                     Text("No launchable apps were found.", color = Muted)
                 } else {
-                    Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState())) {
-                        state.installedApps.forEach { app ->
+                    LazyColumn(Modifier.heightIn(max = 480.dp)) {
+                        items(state.installedApps, key = { it.packageName }) { app ->
                             TextButton(onClick = { viewModel.launchInstalledApp(app.packageName) }, modifier = Modifier.fillMaxWidth()) {
                                 Text(app.label, modifier = Modifier.fillMaxWidth(), color = Ink)
                             }

@@ -2,10 +2,12 @@ package com.nana.ui.main.viewmodel
 
 import android.Manifest
 import android.app.Application
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.AudioManager
 import android.provider.Settings
+import android.os.Build
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.nana.accessibility.NanaAccessibilityService
@@ -20,9 +22,12 @@ import com.nana.ui.main.QuickFeature
 import com.nana.wakeword.WakeWordManager
 import com.nana.stt.SttModelCatalog
 import com.nana.stt.STTManager
+import com.nana.stt.WhisperModelCatalog
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class MainViewModel(
     application: Application,
@@ -43,6 +48,7 @@ class MainViewModel(
         val lastTranscription: String = "",
         val missingPermissions: List<String> = emptyList(),
         val showAppPicker: Boolean = false,
+        val loadingApps: Boolean = false,
         val installedApps: List<InstalledApp> = emptyList()
     )
 
@@ -61,12 +67,6 @@ class MainViewModel(
         val missing = mutableListOf<String>()
         if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             missing.add("Microphone")
-        }
-        if (context.checkSelfPermission(Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
-            missing.add("Phone calls")
-        }
-        if (context.checkSelfPermission(Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
-            missing.add("SMS")
         }
         if (!context.isAccessibilityServiceEnabled(NanaAccessibilityService::class.java)) {
             missing.add("Accessibility")
@@ -124,13 +124,18 @@ class MainViewModel(
     fun onTapToTalk() {
         viewModelScope.launch {
             val context = getApplication<Application>()
-            val modelId = SttModelCatalog.activeId(context)
-            if (!SttModelCatalog.isInstalled(context, modelId)) {
-                setStatus("Download a small offline speech model in Settings to use voice input.")
+            val isWhisper = WhisperModelCatalog.backend(context) == WhisperModelCatalog.BACKEND_WHISPER
+            val hasActiveModel = if (isWhisper) {
+                WhisperModelCatalog.isInstalled(context, WhisperModelCatalog.activeModelId(context))
+            } else {
+                SttModelCatalog.isInstalled(context, SttModelCatalog.activeId(context))
+            }
+            if (!hasActiveModel) {
+                setStatus("Select and download an offline speech model in Settings first.")
                 return@launch
             }
             when (val result = sttManager.startListening()) {
-                is Result.Success<*> -> _uiState.value = _uiState.value.copy(isListening = true, isProcessing = false, statusText = "Listening on this device…")
+                is Result.Success<*> -> _uiState.value = _uiState.value.copy(isListening = true, isProcessing = false, statusText = if (isWhisper) "Listening · Whisper will transcribe on this phone…" else "Listening · Vosk offline…")
                 is Result.Failure -> setStatus(result.error.message)
             }
         }
@@ -143,6 +148,84 @@ class MainViewModel(
             lastTranscription = text,
             statusText = if (partial) text else if (text.isBlank()) "No speech was recognized." else "Heard: $text"
         )
+        if (!partial && text.isNotBlank()) executeVoiceCommand(text)
+    }
+
+    fun onSpeechError(message: String) = setStatus(message)
+
+    private fun executeVoiceCommand(spoken: String) {
+        val command = spoken.trim().lowercase().replace(Regex("\\s+"), " ")
+        val context = getApplication<Application>()
+        when {
+            command.matches(Regex("(open|launch|start) .+")) && command.substringAfter(' ') !in setOf("settings", "wifi", "wi-fi", "bluetooth", "notifications", "do not disturb", "display settings") -> {
+                val target = command.substringAfter(' ')
+                val matches = context.packageManager.queryIntentActivities(
+                    Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0
+                ).mapNotNull { info ->
+                    val packageName = info.activityInfo?.packageName ?: return@mapNotNull null
+                    InstalledApp(info.loadLabel(context.packageManager).toString(), packageName)
+                }.distinctBy { it.packageName }
+                val chosen = matches.firstOrNull { it.label.equals(target, ignoreCase = true) }
+                    ?: matches.firstOrNull { it.label.contains(target, ignoreCase = true) }
+                if (chosen != null) launchInstalledApp(chosen.packageName)
+                else setStatus("I couldn't find an installed app called $target.")
+            }
+            command.contains("turn on flashlight") || command.contains("turn on torch") || command == "flashlight on" ->
+                viewModelScope.launch { setStatus(phoneController.setFlashlight(true).message) }
+            command.contains("turn off flashlight") || command.contains("turn off torch") || command == "flashlight off" ->
+                viewModelScope.launch { setStatus(phoneController.setFlashlight(false).message) }
+            command == "flashlight" || command == "toggle flashlight" || command == "toggle torch" ->
+                viewModelScope.launch { setStatus(phoneController.toggleFlashlight().message) }
+            command.contains("volume up") || command == "louder" -> {
+                val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI)
+                setStatus("Media volume raised.")
+            }
+            command.contains("volume down") || command == "quieter" -> {
+                val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_LOWER, AudioManager.FLAG_SHOW_UI)
+                setStatus("Media volume lowered.")
+            }
+            command.contains("pause music") || command == "pause" || command == "stop music" -> mediaAction { mediaController.pause() }
+            command.contains("play music") || command == "play" || command == "resume music" -> mediaAction { mediaController.play() }
+            command.contains("next song") || command == "next" || command.contains("skip track") -> mediaAction { mediaController.next() }
+            command.contains("previous song") || command.contains("previous track") -> mediaAction { mediaController.previous() }
+            command.contains("what's playing") || command.contains("what is playing") || command.contains("now playing") -> viewModelScope.launch {
+                mediaController.initialize()
+                setStatus(mediaController.getNowPlayingInfo()?.toSpokenString() ?: "Nothing is playing right now.")
+            }
+            command.contains("battery") -> setStatus(phoneController.getBatteryInfo().message)
+            command.contains("storage") || command.contains("space left") -> setStatus(phoneController.getStorageInfo().message)
+            command.contains("wifi") || command.contains("wi-fi") -> openSystemPanel(Settings.Panel.ACTION_WIFI, "Wi-Fi controls")
+            command.contains("bluetooth") -> openSystemPanel(Settings.ACTION_BLUETOOTH_SETTINGS, "Bluetooth settings")
+            command.contains("do not disturb") || command == "dnd" -> openSystemPanel(Settings.ACTION_ZEN_MODE_PRIORITY_SETTINGS, "Do Not Disturb settings")
+            command.contains("brightness") || command.contains("display settings") -> openSystemPanel(Settings.ACTION_DISPLAY_SETTINGS, "Display settings")
+            command == "open settings" || command == "phone settings" -> openSystemPanel(Settings.ACTION_SETTINGS, "Android settings")
+            command.matches(Regex("(call|dial) [0-9+() -]{3,}")) -> {
+                val number = command.substringAfter(' ').filter { it.isDigit() || it == '+' }
+                val intent = Intent(Intent.ACTION_DIAL, android.net.Uri.parse("tel:$number")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                runCatching { context.startActivity(intent) }
+                    .onSuccess { setStatus("Review the number in the dialer before placing the call.") }
+                    .onFailure { setStatus("The dialer is unavailable on this phone.") }
+            }
+            command.contains("message") || command.contains("text") -> openApp(Intent.ACTION_MAIN, "android.intent.category.APP_MESSAGING")
+            command.contains("notification") -> openSystemPanel(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS, "Notification access")
+            command.contains("timer for ") -> {
+                val duration = Regex("timer for (\\d+) (second|seconds|minute|minutes|hour|hours)").find(command)
+                if (duration == null) setStatus("Try a timer command such as ‘set a timer for 5 minutes.’")
+                else {
+                    val count = duration.groupValues[1].toLongOrNull() ?: 0L
+                    val unit = duration.groupValues[2]
+                    val seconds = count * when (unit) { "hour", "hours" -> 3600L; "minute", "minutes" -> 60L; else -> 1L }
+                    viewModelScope.launch {
+                        val result = phoneController.setTimer(seconds, "NaNa timer")
+                        setStatus(if (result.isSuccess) "Timer set for ${duration.groupValues[1]} $unit." else "Couldn't set a timer on this phone.")
+                    }
+                }
+            }
+            command.contains("help") || command.contains("what can you do") -> setStatus("Try ‘open Maps,’ ‘turn on flashlight,’ ‘volume up,’ ‘pause music,’ ‘battery status,’ ‘Wi-Fi settings,’ or ‘set a timer for 5 minutes.’")
+            else -> setStatus("I heard ‘$spoken’. Try ‘help’ for offline commands this phone can run.")
+        }
     }
 
     fun onMediaPlayPause() {
@@ -163,16 +246,24 @@ class MainViewModel(
 
     fun showAllApps() {
         val context = getApplication<Application>()
-        val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-        val apps = context.packageManager.queryIntentActivities(launcherIntent, 0)
-            .mapNotNull { info ->
-                val packageName = info.activityInfo?.packageName ?: return@mapNotNull null
-                if (packageName == context.packageName) return@mapNotNull null
-                InstalledApp(info.loadLabel(context.packageManager).toString(), packageName)
+        _uiState.value = _uiState.value.copy(showAppPicker = true, loadingApps = true, installedApps = emptyList())
+        viewModelScope.launch {
+            val apps = withContext(Dispatchers.IO) {
+                val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+                val activities = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    context.packageManager.queryIntentActivities(launcherIntent, PackageManager.ResolveInfoFlags.of(0))
+                } else {
+                    @Suppress("DEPRECATION")
+                    context.packageManager.queryIntentActivities(launcherIntent, 0)
+                }
+                activities.mapNotNull { info ->
+                    val packageName = info.activityInfo?.packageName ?: return@mapNotNull null
+                    if (packageName == context.packageName) return@mapNotNull null
+                    InstalledApp(info.loadLabel(context.packageManager).toString(), packageName)
+                }.distinctBy { it.packageName }.sortedBy { it.label.lowercase() }
             }
-            .distinctBy { it.packageName }
-            .sortedBy { it.label.lowercase() }
-        _uiState.value = _uiState.value.copy(showAppPicker = true, installedApps = apps)
+            _uiState.value = _uiState.value.copy(installedApps = apps, loadingApps = false)
+        }
     }
 
     fun dismissAppPicker() {

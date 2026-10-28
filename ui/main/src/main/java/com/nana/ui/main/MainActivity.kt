@@ -28,6 +28,10 @@ import com.nana.common.Constants
 class MainActivity : ComponentActivity() {
     private val speechResultReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
+            intent?.getStringExtra("error")?.takeIf(String::isNotBlank)?.let {
+                viewModel.onSpeechError(it)
+                return
+            }
             viewModel.onSpeechUpdate(
                 intent?.getStringExtra("text").orEmpty(),
                 intent?.getBooleanExtra("partial", false) ?: false
@@ -82,9 +86,7 @@ class MainActivity : ComponentActivity() {
 
     private fun requestAppPermissions() {
         val permissions = arrayOf(
-            Manifest.permission.RECORD_AUDIO,
-            Manifest.permission.CALL_PHONE,
-            Manifest.permission.SEND_SMS
+            Manifest.permission.RECORD_AUDIO
         ).filter { checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
 
         if (permissions.isEmpty()) {

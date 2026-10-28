@@ -102,6 +102,22 @@ class PhoneController(private val context: Context) {
         }
     }
 
+    suspend fun setFlashlight(enabled: Boolean): ActionResult {
+        return try {
+            val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as android.hardware.camera2.CameraManager
+            val cameraId = cameraManager.cameraIdList.firstOrNull { id ->
+                cameraManager.getCameraCharacteristics(id)
+                    .get(android.hardware.camera2.CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+            } ?: return ActionResult(false, "No flashlight available")
+            cameraManager.setTorchMode(cameraId, enabled)
+            flashlightEnabled = enabled
+            ActionResult(true, if (enabled) "Flashlight on" else "Flashlight off")
+        } catch (e: Exception) {
+            NanaLogger.e("PhoneController", "Flashlight control failed", e)
+            ActionResult(false, "Flashlight could not be controlled. Check camera access.")
+        }
+    }
+
     private fun isFlashlightOn(cameraManager: android.hardware.camera2.CameraManager, cameraId: String): Boolean {
         return try {
             cameraManager.getCameraCharacteristics(cameraId)
